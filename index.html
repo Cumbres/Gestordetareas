@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Generador Profesional de Informe de Tareas</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: #f5f8fa;
+            margin: 0;
+            padding: 20px;
+            color: #222;
+            line-height: 1.6;
+        }
+
+        h1 {
+            text-align: center;
+            color: #0a4d8c;
+            margin-bottom: 30px;
+        }
+
+        .container {
+            max-width: 950px;
+            background: white;
+            border-radius: 12px;
+            padding: 30px 50px 50px;
+            margin: 30px auto;
+            box-shadow: 0 12px 30px rgba(10, 77, 140, 0.15);
+        }
+
+        label {
+            font-weight: 500;
+            display: block;
+            margin-bottom: 8px;
+            color: #0a4d8c;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 20px;
+            border: 1.8px solid #ccc;
+            border-radius: 6px;
+            font-size: 15px;
+            font-family: 'Roboto', sans-serif;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="text"]:focus,
+        input[type="date"]:focus,
+        input[type="number"]:focus,
+        textarea:focus,
+        select:focus {
+            border-color: #0a4d8c;
+            outline: none;
+            box-shadow: 0 0 6px rgba(10, 77, 140, 0.2);
+        }
+
+        .task {
+            background: #f8faff;
+            border-radius: 8px;
+            padding: 20px 25px;
+            margin-bottom: 25px;
+            border-left: 6px solid #0a4d8c;
+            box-shadow: 0 2px 6px rgba(10, 77, 140, 0.08);
+        }
+
+        .task.fuera-de-plazo {
+            border-left-color: #dc3545; /* Rojo para destacar fuera de plazo */
+            background-color: #ffecec;
+        }
+
+        .task-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .task-header h3 {
+            margin: 0;
+            font-weight: 700;
+            color: #0a4d8c;
+        }
+
+        .remove-task-btn {
+            background: #d9534f;
+            border: none;
+            color: white;
+            cursor: pointer;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 13px;
+            transition: background 0.3s ease;
+        }
+
+        .remove-task-btn:hover {
+            background: #c9302c;
+        }
+
+        .flex-row {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+
+        .flex-item {
+            flex: 1 1 180px;
+        }
+
+        .progress-container {
+            margin-top: -12px;
+            margin-bottom: 10px;
+        }
+
+        progress {
+            width: 100%;
+            height: 16px;
+            border-radius: 8px;
+            overflow: hidden;
+            appearance: none;
+        }
+
+        progress::-webkit-progress-bar {
+            background-color: #d3e2f4;
+            border-radius: 8px;
+        }
+
+        progress::-webkit-progress-value {
+            background-color: #0a4d8c;
+            border-radius: 8px;
+            transition: width 0.4s ease-in-out;
+        }
+
+        .btn {
+            background-color: #0a4d8c;
+            border: none;
+            color: white;
+            font-weight: 600;
+            padding: 14px 30px;
+            margin-top: 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            font-size: 16px;
+            box-shadow: 0 3px 9px rgba(10, 77, 140, 0.12);
+        }
+
+        .btn:hover {
+            background-color: #083860;
+            box-shadow: 0 5px 12px rgba(10, 77, 140, 0.18);
+        }
+
+        .footer-signature {
+            margin-top: 50px;
+            text-align: right;
+            font-weight: 500;
+            font-size: 15px;
+            color: #555;
+            font-style: italic;
+        }
+
+        #header-text {
+            padding: 18px 25px;
+            background-color: #eaf1f8;
+            border-left: 8px solid #0a4d8c;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            font-size: 16px;
+            line-height: 1.7;
+            color: #333;
+        }
+
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+            gap: 15px;
+        }
+
+        input[type="date"] {
+            max-width: 220px;
+        }
+
+        .category-title {
+            color: #0a4d8c;
+            font-size: 1.5em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #0a4d8c;
+            padding-bottom: 8px;
+        }
+
+        .highlighted-task-name {
+            font-weight: bold;
+            color: #dc3545; /* Rojo para tareas destacadas */
+        }
+
+        /* Estilos para el PDF */
+        .pdf-page {
+            padding: 30px 40px;
+        }
+
+        .pdf-title {
+            text-align: center;
+            color: #0a4d8c;
+            font-size: 20pt;
+            margin-bottom: 20px;
+        }
+
+        .pdf-header-text {
+            font-size: 11pt;
+            color: #333;
+            line-height: 1.7;
+            margin-bottom: 25px;
+        }
+
+        .pdf-category-title {
+            font-size: 16pt;
+            color: #0a4d8c;
+            font-weight: bold;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+
+        .pdf-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+        }
+
+        .pdf-table th {
+            background-color: #f2f2f2;
+            color: #0a4d8c;
+            font-weight: bold;
+            padding: 10px;
+            text-align: left;
+        }
+
+        .pdf-table td {
+            padding: 10px;
+        }
+
+        .pdf-progress-container {
+            background-color: #d3e2f4;
+            border-radius: 8px;
+            height: 12px;
+            width: 120px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+
+        .pdf-progress-bar {
+            background-color: #0a4d8c;
+            height: 12px;
+            border-radius: 8px 0 0 8px;
+        }
+
+        .pdf-progress-text {
+            font-size: 8pt;
+            display: inline-block;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .pdf-highlighted {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .pdf-summary-title {
+            font-size: 14pt;
+            color: #0a4d8c;
+            font-weight: bold;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #0a4d8c;
+            padding-bottom: 8px;
+        }
+
+        .pdf-summary-item {
+            margin-bottom: 10px;
+        }
+
+        .pdf-summary-chart-container {
+            margin-top: 20px;
+            width: 100%;
+            /* You might need to adjust height based on content */
+            min-height: 150px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .pdf-bar-chart {
+            width: 120px;
+            text-align: center;
+        }
+
+        .pdf-bar {
+            background-color: #0a4d8c;
+            color: white;
+            padding: 8px;
+            border-radius: 5px 5px 0 0;
+            font-size: 8pt;
+            margin-bottom: 5px;
+        }
+
+        .pdf-bar-label {
+            font-size: 8pt;
+            color: #555;
+        }
+
+        .pdf-footer-signature {
+            font-size: 11pt;
+            color: #555;
+            font-style: italic;
+            text-align: right;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>TAREAS CUMBRES DE QUILPUÉ</h1>
+    <div class="top-controls">
+        <label for="report-date">Fecha del Informe:</label>
+        <input type="date" id="report-date" value="">
+        <div>
+            <button id="btn-save" class="btn btn-secondary">Guardar Borrador</button>
+            <button id="btn-load" class="btn btn-secondary">Cargar Archivo</button>
+            <button id="btn-generate" class="btn">Generar PDF</button>
+        </div>
+    </div>
+
+    <section id="header-text" aria-live="polite" aria-atomic="true"></section>
+
+    <section id="tasks-container"></section>
+
+    <button id="btn-add-task" class="btn" style="width: 100%;">Agregar Tarea</button>
+
+    <div class="footer-signature">Comité Cumbres de Quilpué</div>
+</div>
+
+<input type="file" id="file-input" accept="application/json" style="display:none" />
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+    (() => {
+        function formatInformeDate(date) {
+            if (!date) return '';
+            const options = { year: 'numeric', month: 'long', day: 'numeric' };
+            const d = new Date(date);
+            return d.toLocaleDateString('es-ES', options);
+        }
+
+        const dateInput = document.getElementById('report-date');
+        const headerText = document.getElementById('header-text');
+        const tasksContainer = document.getElementById('tasks-container');
+        const btnAddTask = document.getElementById('btn-add-task');
+        const btnSave = document.getElementById('btn-save');
+        const btnLoad = document.getElementById('btn-load');
+        const btnLoadFile = document.getElementById('btn-load-file');
+        const btnGenerate = document.getElementById('btn-generate');
+        const fileInput = document.getElementById('file-input');
+
+        function updateHeaderText() {
+            const formattedDate = formatInformeDate(dateInput.value);
+            if (formattedDate) {
+                headerText.textContent = `Informe de Tareas para Administración y Staff de Condominio Cumbres de Quilpué\n\nEmitido por: Comité Cumbres de Quilpué\nFecha: ${formattedDate}\n\nEl presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área y destacando aquellas que requieren atención especial para la Administración y el Staff del condominio.`;
+            } else {
+                headerText.textContent = 'Por favor, seleccione la fecha del informe para generar la introducción.';
+            }
+        }
+
+        dateInput.valueAsDate = new Date();
+        updateHeaderText();
+
+        dateInput.addEventListener('change', updateHeaderText);
+
+        let taskIdCounter = 0;
+
+        function createTaskElement(taskData = {}) {
+            const taskId = taskIdCounter++;
+            const taskDiv = document.createElement('div');
+            taskDiv.className = 'task';
+            taskDiv.setAttribute('data-task-id', taskId);
+
+            const taskHeader = document.createElement('div');
+            taskHeader.className = 'task-header';
+
+            const taskTitle = document.createElement('h3');
+            taskTitle.textContent = taskData.name || `Tarea ${taskId + 1}`;
+            taskHeader.appendChild(taskTitle);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'remove-task-btn';
+            removeBtn.title = 'Eliminar esta tarea';
+            removeBtn.textContent = 'Eliminar';
+            removeBtn.addEventListener('click', () => {
+                tasksContainer.removeChild(taskDiv);
+                updateTaskTitles();
+            });
+            taskHeader.appendChild(removeBtn);
+
+            taskDiv.appendChild(taskHeader);
+
+            // Name
+            const labelName = document.createElement('label');
+            labelName.setAttribute('for', `task-name-${taskId}`);
+            labelName.textContent = 'Nombre de la tarea';
+            taskDiv.appendChild(labelName);
+
+            const inputName = document.createElement('input');
+            inputName.type = 'text';
+            inputName.id = `task-name-${taskId}`;
+            inputName.value = taskData.name || '';
+            inputName.placeholder = 'Nombre de la tarea';
+            inputName.required = true;
+            inputName.addEventListener('input', () => {
+                taskTitle.textContent = inputName.value || `Tarea ${taskId + 1}`;
+            });
+            taskDiv.appendChild(inputName);
+
+            // Description
+            const labelDesc = document.createElement('label');
+            labelDesc.setAttribute('for', `task-desc-${taskId}`);
+            labelDesc.textContent = 'Descripción';
+            taskDiv.appendChild(labelDesc);
+
+            const textareaDesc = document.createElement('textarea');
+            textareaDesc.id = `task-desc-${taskId}`;
+            textareaDesc.placeholder = 'Descripción detallada de la tarea';
+            textareaDesc.value = taskData.description || '';
+            taskDiv.appendChild(textareaDesc);
+
+            // Task Category
+            const labelCategory = document.createElement('label');
+            labelCategory.setAttribute('for', `task-category-${taskId}`);
+            labelCategory.textContent = 'Categoría';
+            taskDiv.appendChild(labelCategory);
+
+            const selectCategory = document
+.createElement('select');
+            selectCategory.id = `task-category-${taskId}`;
+            const categories = ['ADMINISTRATIVA', 'OPERATIVA', 'FINANCIERA', 'SEGURIDAD', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category;
+                option.textContent = category;
+                if (taskData.category === category) option.selected = true;
+                selectCategory.appendChild(option);
+            });
+            taskDiv.appendChild(selectCategory);
+
+            // Flex row: deadline and progress
+            const flexRow = document.createElement('div');
+            flexRow.className = 'flex-row';
+
+            // Deadline
+            const deadlineDiv = document.createElement('div');
+            deadlineDiv.className = 'flex-item';
+            const labelDeadline = document.createElement('label');
+            labelDeadline.setAttribute('for', `task-deadline-${taskId}`);
+            labelDeadline.textContent = 'Plazo';
+            deadlineDiv.appendChild(labelDeadline);
+
+            const inputDeadline = document.createElement('input');
+            inputDeadline.type = 'date';
+            inputDeadline.id = `task-deadline-${taskId}`;
+            inputDeadline.value = taskData.deadline || '';
+            deadlineDiv.appendChild(inputDeadline);
+
+            flexRow.appendChild(deadlineDiv);
+
+            // Progress
+            const progressDiv = document.createElement('div');
+            progressDiv.className = 'flex-item';
+            progressDiv.style.minWidth = '180px';
+            const labelProgress = document.createElement('label');
+            labelProgress.setAttribute('for', `task-progress-${taskId}`);
+            labelProgress.textContent = 'Porcentaje de avance';
+            progressDiv.appendChild(labelProgress);
+
+            const inputProgress = document.createElement('input');
+            inputProgress.type = 'number';
+            inputProgress.id = `task-progress-${taskId}`;
+            inputProgress.min = 0;
+            inputProgress.max = 100;
+            inputProgress.value = taskData.progress !== undefined ? taskData.progress : 0;
+            inputProgress.style.width = '60px';
+            inputProgress.required = true;
+            progressDiv.appendChild(inputProgress);
+
+            const progressBarContainer = document.createElement('div');
+            progressBarContainer.className = 'progress-container';
+            const progressBar = document.createElement('progress');
+            progressBar.max = 100;
+            progressBar.value = inputProgress.value;
+            progressBarContainer.appendChild(progressBar);
+            progressDiv.appendChild(progressBarContainer);
+
+            // Sync progressBar value when input changes
+            inputProgress.addEventListener('input', () => {
+                let v = parseInt(inputProgress.value);
+                if (isNaN(v) || v < 0) v = 0;
+                if (v > 100) v = 100;
+                inputProgress.value = v;
+                progressBar.value = v;
+                highlightOutOfDateTask(taskDiv, inputDeadline.value, v);
+            });
+
+            inputDeadline.addEventListener('change', () => {
+                highlightOutOfDateTask(taskDiv, inputDeadline.value, parseInt(inputProgress.value));
+            });
+
+            flexRow.appendChild(progressDiv);
+
+            taskDiv.appendChild(flexRow);
+
+            return taskDiv;
+        }
+
+        function highlightOutOfDateTask(taskDiv, deadline, progress) {
+            if (deadline) {
+                const deadlineDate = new Date(deadline);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0); // Comparar solo las fechas
+                if (deadlineDate < today && progress < 100) {
+                    taskDiv.classList.add('fuera-de-plazo');
+                    const taskNameInput = taskDiv.querySelector('input[type="text"]');
+                    const titleElement = taskDiv.querySelector('.task-header h3');
+                    if (taskNameInput && titleElement && !titleElement.classList.contains('highlighted-task-name')) {
+                        titleElement.classList.add('highlighted-task-name');
+                    }
+                } else {
+                    taskDiv.classList.remove('fuera-de-plazo');
+                    const titleElement = taskDiv.querySelector('.task-header h3');
+                    if (titleElement) {
+                        titleElement.classList.remove('highlighted-task-name');
+                    }
+                }
+            } else {
+                taskDiv.classList.remove('fuera-de-plazo');
+                const titleElement = taskDiv.querySelector('.task-header h3');
+                if (titleElement) {
+                    titleElement.classList.remove('highlighted-task-name');
+                }
+            }
+        }
+
+
+        function updateTaskTitles() {
+            const tasks = document.querySelectorAll('.task');
+            tasks.forEach((task, index) => {
+                const titleEl = task.querySelector('.task-header h3');
+                const nameInput = task.querySelector('input[type="text"]');
+                titleEl.textContent = nameInput.value || `Tarea ${index + 1}`;
+            });
+        }
+
+        btnAddTask.addEventListener('click', () => {
+            const taskEl = createTaskElement();
+            tasksContainer.appendChild(taskEl);
+            scrollToBottom();
+        });
+
+        function scrollToBottom() {
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+
+        function gatherData() {
+            const dateValue = dateInput.value;
+            const tasksEls = document.querySelectorAll('.task');
+            const tasksData = [];
+            tasksEls.forEach(taskEl => {
+                const taskId = taskEl.getAttribute('data-task-id');
+                const name = taskEl.querySelector(`#task-name-${taskId}`).value.trim();
+                const description = taskEl.querySelector(`#task-desc-${taskId}`).value.trim();
+                const category = taskEl.querySelector(`#task-category-${taskId}`).value;
+                const deadline = taskEl.querySelector(`#task-deadline-${taskId}`).value;
+                const progressRaw = taskEl.querySelector(`#task-progress-${taskId}`).value;
+                let progress = parseInt(progressRaw);
+                if (isNaN(progress) || progress < 0) progress = 0;
+                if (progress > 100) progress = 100;
+                if (name) {
+                    tasksData.push({ name, description, category, deadline, progress });
+                }
+            });
+            return { dateValue, tasksData };
+        }
+
+        function saveDraftToFile() {
+            const data = gatherData();
+            const filename = `borrador_informe_tareas_${new Date().toISOString().slice(0, 10)}.json`;
+            const json = JSON.stringify(data, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert(`Borrador guardado como "${filename}".`);
+        }
+
+        function loadDraftFromFile() {
+            fileInput.click();
+        }
+
+        function handleFileLoad(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                try {
+                    const data = JSON.parse(evt.target.result);
+                    loadDataIntoForm(data);
+                    alert('Archivo cargado con éxito.');
+                } catch (err) {
+                    alert('El archivo seleccionado no es un JSON válido.');
+                }
+            };
+            reader.readAsText(file);
+            fileInput.value = ''; // Reset the input
+        }
+
+        function loadDataIntoForm(data) {
+            if (!data) return;
+            if (data.dateValue) dateInput.value = data.dateValue;
+            updateHeaderText();
+            tasksContainer.innerHTML = '';
+            if (data.tasksData && data.tasksData.length > 0) {
+                data.tasksData.forEach(task => {
+                    const taskEl = createTaskElement(task);
+                    tasksContainer.appendChild(taskEl);
+                });
+            } else {
+                btnAddTask.click();
+            }
+        }
+
+        btnSave.addEventListener('click', saveDraftToFile);
+        btnLoad.addEventListener('click', loadDraftFromFile);
+        fileInput.addEventListener('change', handleFileLoad);
+        btnAddTask.click(); // Asegurarse de que haya al menos una tarea al inicio
+
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const data = gatherData();
+
+            if (!data.dateValue) {
+                alert('Por favor, seleccione la fecha del informe.');
+                return;
+            }
+            if (data.tasksData.length === 0) {
+                alert('Debe ingresar al menos una tarea para generar el informe.');
+                return;
+            }
+
+            const categorizedTasks = {
+                'ADMINISTRATIVA': [],
+                'OPERATIVA': [],
+                'FINANCIERA': [],
+                'SEGURIDAD': [],
+                'COMUNICACIÓN': [],
+                'SOCIAL': [],
+                'OTROS': []
+            };
+
+            data.tasksData.forEach(task => {
+                categorizedTasks[task.category] = categorizedTasks[task.category] || [];
+                categorizedTasks[task.category].push(task);
+            });
+
+            const pdf = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const margin = 30;
+            let yPosition = margin + 30;
+
+            function addPage() {
+                pdf.addPage();
+                yPosition = margin;
+            }
+
+            function addPageIfRequired(contentHeight) {
+                if (yPosition + contentHeight > pdf.internal.pageSize.getHeight() - margin - 30) {
+                    addPage();
+                }
+            }
+
+            // Título
+            pdf.setFontSize(20);
+            pdf.setFont('helvetica', 'bold');
+            const title = 'TAREAS CUMBRES DE QUILPUÉ';
+            const titleWidth = pdf.getTextWidth(title);
+            pdf.text(title, (pageWidth - titleWidth) / 2, yPosition);
+            yPosition += 30;
+
+            // Introducción
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'normal');
+            const introduction = `Informe de Tareas para Administración y Staff de Condominio Cumbres de Quilpué\n\nEmitido por: Comité Cumbres de Quilpué\nFecha: ${formatInformeDate(data.dateValue)}\n\nEl presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área y destacando aquellas que requieren atención especial para la Administración y el Staff del condominio.`;
+            const splitIntroduction = pdf.splitTextToSize(introduction, pageWidth - 2 * margin);
+            addPageIfRequired(splitIntroduction.length * 13);
+            pdf.text(splitIntroduction, margin, yPosition);
+            yPosition += splitIntroduction.length * 13 + 20;
+
+            const categoriesOrder = ['ADMINISTRATIVA', 'OPERATIVA', 'FINANCIERA', 'SEGURIDAD', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
+
+            categoriesOrder.forEach(category => {
+                if (categorizedTasks[category] && categorizedTasks[category].length > 0) {
+                    // Título de la categoría
+                    pdf.setFontSize(16);
+                    pdf.setFont('helvetica', 'bold');
+                    addPageIfRequired(20);
+                    pdf.text(category, margin, yPosition);
+                    yPosition += 20;
+
+                    // Encabezados de la tabla
+                    pdf.setFontSize(9);
+                    pdf.setFont('helvetica', 'bold');
+                    const headers = ['Nombre', 'Descripción', 'Plazo', 'Avance'];
+                    const colWidths = [140, 180, 70, 60];
+                    let x = margin;
+                    headers.forEach((header, index) => {
+                        pdf.text(header, x, yPosition);
+                        x += colWidths[index] + 10;
+                    });
+                    yPosition += 12;
+
+                    pdf.setFont('helvetica', 'normal');
+                    categorizedTasks[category].forEach(task => {
+                        const deadlineText = task.deadline ? new Date(task.deadline).toLocaleDateString('es-ES') : '-';
+                        const progressText = `${task.progress}%`;
+                        const splitDescription = pdf.splitTextToSize(task.description || '-', colWidths[1]);
+                        const rowHeight = Math.max(12, splitDescription.length * 4);
+
+                        addPageIfRequired(rowHeight + 8);
+                        let xPos = margin;
+
+                        // Nombre (con estilo si está fuera de plazo)
+                        pdf.setFont('helvetica', task.deadline && new Date(task.deadline) < new Date() && task.progress < 100 ? 'bolditalic' : 'normal');
+                        pdf.setTextColor(task.deadline && new Date(task.deadline) < new Date() && task.progress < 100 ? '#dc3545' : '#000000');
+                        pdf.text(task.name, xPos, yPosition);
+                        pdf.setTextColor('#000000');
+                        xPos += colWidths[0] + 10;
+
+                        // Descripción
+                        pdf.setFontSize(7);
+                        pdf.text(splitDescription, xPos, yPosition);
+                        xPos += colWidths[1] + 10;
+                        pdf.setFontSize(9);
+
+                        // Plazo
+                        pdf.text(deadlineText, xPos, yPosition);
+                        xPos += colWidths[2] + 10;
+
+                        // Avance
+                        pdf.text(progressText, xPos, yPosition);
+
+                        yPosition += rowHeight + 8;
+                    });
+                    yPosition += 15;
+                }
+            });
+
+            // Resumen Gráfico
+            addPage();
+            yPosition = margin;
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Resumen de Avance por Categoría', margin, yPosition);
+            yPosition += 20;
+
+            const summaryData = {};
+            categoriesOrder.forEach(category => {
+                if (categorizedTasks[category]) {
+                    const totalTasks = categorizedTasks[category].length;
+                    const completedTasks = categorizedTasks[category].filter(task => task.progress === 100).length;
+                    const overdueTasks = categorizedTasks[category].filter(task => task.deadline && new Date(task.deadline) < new Date() && task.progress < 100).length;
+                    const averageProgress = totalTasks > 0 ? categorizedTasks[category].reduce((sum, task) => sum + task.progress, 0) / totalTasks : 0;
+                    summaryData[category] = { totalTasks, completedTasks, overdueTasks, averageProgress };
+                }
+            });
+
+            const chartMargin = 40;
+            const barWidth = 50;
+            const barSpacing = 20;
+            const chartHeight = 200;
+            const startX = margin + chartMargin;
+            let currentX = startX;
+            const maxY = Math.max(...Object.values(summaryData).map(s => s.averageProgress), 100); // Ensure max is at least 100
+
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+
+            for (const category in summaryData) {
+                const summary = summaryData[category];
+                const barHeight = (summary.averageProgress / maxY) * chartHeight;
+                const yBar = yPosition + chartHeight - barHeight;
+
+                pdf.setFillColor('#0a4d8c');
+                pdf.rect(currentX, yBar, barWidth, barHeight, 'F');
+
+                pdf.setTextColor('#555');
+                pdf.text(`${summary.averageProgress.toFixed(0)}%`, currentX + barWidth / 2, yBar - 5, { align: 'center' });
+                const splitLabel = pdf.splitTextToSize(category, barWidth + 20);
+                pdf.text(splitLabel, currentX + barWidth / 2, yPosition + chartHeight + 15, { align: 'center' });
+
+                currentX += barWidth + barSpacing;
+            }
+
+            yPosition += chartHeight + 40;
+
+            // Análisis de Plazos
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Análisis del Cumplimiento de Plazos', margin, yPosition);
+            yPosition += 18;
+
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'normal');
+            let overallStatus = 'En progreso general.';
+            const totalOverdueTasks = Object.values(summaryData).reduce((sum, s) => sum + s.overdueTasks, 0);
+            const totalTasksOverall = Object.values(summaryData).reduce((sum, s) => sum + s.totalTasks, 0);
+            const overallAverageProgress = totalTasksOverall > 0 ? Object.
+values(summaryData).reduce((sum, s) => sum + s.averageProgress * s.totalTasks, 0) / totalTasksOverall : 0;
+
+            if (totalOverdueTasks > 0) {
+                overallStatus = `Se identificaron ${totalOverdueTasks} tareas atrasadas que requieren atención prioritaria.`;
+            } else if (overallAverageProgress < 60) {
+                overallStatus = 'El avance general de las tareas podría requerir un seguimiento más cercano para asegurar el cumplimiento de los plazos.';
+            } else if (overallAverageProgress === 100 && totalTasksOverall > 0) {
+                overallStatus = 'Todas las tareas se han completado a la fecha.';
+            }
+
+            const analysisText = `Análisis general: ${overallStatus}`;
+            const splitAnalysis = pdf.splitTextToSize(analysisText, pageWidth - 2 * margin);
+            addPageIfRequired(splitAnalysis.length * 13 + 15);
+            pdf.text(splitAnalysis, margin, yPosition);
+            yPosition += splitAnalysis.length * 13 + 25;
+
+            // Cierre
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'normal');
+            const closing = `Fin del informe de tareas. Se recomienda realizar un seguimiento continuo de las tareas pendientes, especialmente aquellas marcadas como atrasadas o que requieren atención. Agradecemos la dedicación y el esfuerzo de todos los involucrados.`;
+            const splitClosing = pdf.splitTextToSize(closing, pageWidth - 2 * margin);
+            addPageIfRequired(splitClosing.length * 13 + 20);
+            pdf.text(splitClosing, margin, yPosition);
+            yPosition += splitClosing.length * 13 + 30;
+
+            // Pie de firma
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'italic');
+            pdf.text('Comité Cumbres de Quilpué', pageWidth - margin, pdf.internal.pageSize.getHeight() - margin, { align: 'right' });
+
+            const filename = `Informe_de_Tareas_${formatInformeDate(data.dateValue).replace(/ /g, '_')}.pdf`;
+            pdf.save(filename);
+        }
+
+        btnGenerate.addEventListener('click', generatePDF);
+    })();
+</script>
+</body>
+</html>
