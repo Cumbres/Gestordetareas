@@ -1,339 +1,228 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="scroll-smooth">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Plataforma de Informes | Comité Cumbres de Quilpué</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
     <style>
-        :root {
-            --font-family: 'Inter', sans-serif;
-            --color-primary: #0a4d8c;
-            --color-primary-dark: #083860;
-            --color-accent: #1e90ff;
-            --color-accent-dark: #0073e6;
-            --color-danger: #d9534f;
-            --color-danger-dark: #c9302c;
-            --color-text: #333;
-            --color-text-light: #666;
-            --color-bg: #f5f8fa;
-            --color-surface: #ffffff;
-            --border-color: #dee2e6;
-            --border-radius: 8px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --spacing-unit: 1rem;
-        }
-        *, *::before, *::after { box-sizing: border-box; }
-        body {
-            font-family: var(--font-family);
-            background-color: var(--color-bg);
-            margin: 0;
-            padding-top: 100px;
-            color: var(--color-text);
-            font-size: 16px;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        main { flex-grow: 1; }
-        .app-header {
-            background-color: var(--color-surface);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
-            position: fixed;
-            top: 0; left: 0; right: 0;
-            z-index: 1000;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-        .header-title { display: flex; align-items: center; gap: 15px; }
-        .header-title img { height: 50px; width: auto; }
-        .header-title .title-text h1 {
-            font-size: 1.5rem;
-            color: var(--color-primary);
-            margin: 0;
-            font-weight: 700;
-        }
-        .header-title .title-text p {
-            margin: 0;
-            font-size: 0.9rem;
-            color: var(--color-text-light);
-        }
-        .main-container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: calc(var(--spacing-unit) * 2);
-        }
-        .card {
-            background-color: var(--color-surface);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            padding: calc(var(--spacing-unit) * 1.5);
-            margin-bottom: calc(var(--spacing-unit) * 2);
-        }
-        .report-controls-card { display: flex; flex-direction: column; gap: var(--spacing-unit); }
-        .report-date-section { display: flex; align-items: center; gap: var(--spacing-unit); flex-wrap: wrap; }
-        .report-actions { display: flex; gap: calc(var(--spacing-unit) * 0.75); flex-wrap: wrap; }
-        .info-banner {
-            padding: var(--spacing-unit);
-            background-color: #eaf1f8;
-            border-left: 5px solid var(--color-accent);
-            border-radius: var(--border-radius);
-            margin-bottom: calc(var(--spacing-unit) * 2);
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-        .btn {
-            font-family: var(--font-family);
-            border: none;
-            padding: 0.75em 1.5em;
-            border-radius: var(--border-radius);
-            cursor: pointer;
-            transition: background-color 0.2s ease, transform 0.2s ease;
-            font-weight: 500;
-            font-size: 0.95rem;
-            text-align: center;
-            white-space: nowrap;
-        }
-        .btn:hover { transform: translateY(-2px); }
-        .btn:active { transform: translateY(0); }
-        .btn-primary { background-color: var(--color-primary); color: white; }
-        .btn-primary:hover { background-color: var(--color-primary-dark); }
-        .btn-accent { background-color: var(--color-accent); color: white; }
-        .btn-accent:hover { background-color: var(--color-accent-dark); }
-        .btn-secondary { background-color: #e9ecef; color: var(--color-text); border: 1px solid #ced4da; }
-        .btn-secondary:hover { background-color: #dde1e4; }
-        .btn-danger { background-color: var(--color-danger); color: white; }
-        .btn-danger:hover { background-color: var(--color-danger-dark); }
-        .btn-full-width { width: 100%; }
-        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--color-text); }
-        input[type="text"], input[type="date"], input[type="number"], textarea, select {
-            width: 100%;
-            padding: 0.75rem;
-            margin-bottom: var(--spacing-unit);
-            border: 1px solid var(--border-color);
-            border-radius: var(--border-radius);
-            font-size: 1rem;
-            font-family: var(--font-family);
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--color-primary);
-            box-shadow: 0 0 0 3px rgba(10, 77, 140, 0.15);
-        }
-        .task-card { border-left: 5px solid var(--color-primary); }
-        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-unit); padding-bottom: var(--spacing-unit); border-bottom: 1px solid var(--border-color); }
-        .task-header h3 { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--color-primary); }
-        .task-body p { margin: 0 0 var(--spacing-unit); line-height: 1.6; }
-        .task-footer { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-unit); color: var(--color-text-light); font-size: 0.9rem; flex-wrap: wrap; }
-        progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; appearance: none; }
-        progress::-webkit-progress-bar { background-color: #e9ecef; }
-        progress::-webkit-progress-value { background-color: var(--color-primary); }
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-        .modal-content { background-color: var(--color-surface); margin: auto; padding: calc(var(--spacing-unit) * 2); border-radius: var(--border-radius); box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 90%; max-width: 600px; position: relative; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: var(--spacing-unit); border-bottom: 1px solid var(--border-color); margin-bottom: calc(var(--spacing-unit) * 1.5); }
-        .modal-header h2 { margin: 0; font-size: 1.5rem; color: var(--color-primary); }
-        .close-button { background: transparent; border: none; font-size: 2rem; font-weight: bold; cursor: pointer; color: var(--color-text-light); }
-        .close-button:hover { color: var(--color-text); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-unit); }
-        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background-color: var(--color-text); color: white; padding: 1rem 1.5rem; border-radius: var(--border-radius); box-shadow: var(--shadow); opacity: 0; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s ease; }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        .toast.success { background-color: #28a745; }
-        .toast.error { background-color: var(--color-danger); }
-        .app-footer { background-color: #e9ecef; color: var(--color-text-light); text-align: center; padding: calc(var(--spacing-unit) * 1.5); margin-top: calc(var(--spacing-unit) * 2); font-size: 0.9rem; }
-        @media (max-width: 992px) {
-            .app-header { flex-direction: column; align-items: flex-start; gap: var(--spacing-unit); padding-bottom: 1.5rem;}
-            body { padding-top: 150px; }
-            .report-actions { width: 100%; justify-content: flex-start; }
-            .btn { flex-grow: 1; }
-        }
-        @media (max-width: 576px) {
-            .header-title { flex-direction: column; align-items: flex-start; }
-            .header-title .title-text { text-align: left; }
-            .report-date-section { flex-direction: column; align-items: stretch; }
-            .form-grid { grid-template-columns: 1fr; }
-            .report-actions { flex-direction: column; }
+        /* Small custom style for toast notifications */
+        .toast {
+            transition: opacity 0.3s ease, transform 0.3s ease;
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-100 text-slate-800 font-sans flex flex-col min-h-screen">
 
-    <header class="app-header">
-        <div class="header-title">
-            <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" alt="Logo Cumbres de Quilpué">
-            <div class="title-text">
-                <h1>Plataforma de Informes</h1>
-                <p>Comité Cumbres de Quilpué</p>
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" alt="Logo Cumbres de Quilpué" class="h-12 w-auto">
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-slate-900">Plataforma de Informes</h1>
+                    <p class="text-sm text-slate-500 hidden md:block">Comité Cumbres de Quilpué</p>
+                </div>
             </div>
-        </div>
-        <div class="report-actions">
-            <button id="btn-save" class="btn btn-secondary">Guardar</button>
-            <button id="btn-load-file" class="btn btn-secondary">Cargar</button>
-            <button id="btn-preview-pdf" class="btn btn-accent">Vista Previa</button>
-            <button id="btn-generate" class="btn btn-primary">Generar PDF</button>
+            
+            <div class="relative" id="actions-menu-container">
+                <button id="actions-menu-button" class="flex items-center gap-2 bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:bg-slate-700 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
+                    <span>Acciones</span>
+                </button>
+                <div id="actions-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl z-50 border border-slate-200">
+                    <a href="#" id="btn-save" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 rounded-t-lg">💾 Guardar Borrador</a>
+                    <a href="#" id="btn-load-file" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">📂 Cargar Archivo</a>
+                    <a href="#" id="btn-preview-pdf" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">📄 Vista Previa PDF</a>
+                    <a href="#" id="btn-generate" class="block px-4 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-b-lg">🚀 Generar PDF</a>
+                </div>
+            </div>
         </div>
     </header>
 
-    <main class="main-container">
-        <div class="card report-controls-card">
-            <div class="report-date-section">
-                <label for="report-date" style="margin-bottom:0; font-weight:700;">Fecha de Emisión del Informe:</label>
-                <input type="date" id="report-date" style="margin-bottom:0;">
-            </div>
+    <main class="flex-grow container mx-auto p-4 md:p-6">
+        <div class="bg-white shadow-md rounded-lg p-4 md:p-6 mb-6">
+            <label for="report-date" class="block text-sm font-bold text-slate-700 mb-2">Fecha de Emisión del Informe:</label>
+            <input type="date" id="report-date" class="w-full md:w-auto p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
         </div>
         
-        <div id="tasks-container"></div>
+        <div id="tasks-container" class="space-y-4">
+            </div>
         
-        <button id="btn-add-task" class="btn btn-accent btn-full-width">+ Agregar Nueva Tarea</button>
+        <button id="btn-add-task" class="mt-6 w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-[1.02]">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
+            Agregar Nueva Tarea
+        </button>
     </main>
     
-    <footer class="app-footer">
+    <footer class="bg-slate-200 text-slate-600 text-center p-4 mt-8">
         <p id="footer-text">&copy; 2025 Condominio Cumbres de Quilpué. Todos los derechos reservados.</p>
     </footer>
 
-    <div id="task-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-title">Agregar Tarea</h2>
-                <button class="close-button">&times;</button>
+    <div id="task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200">
+                <h2 id="modal-title" class="text-xl font-bold text-slate-800">Agregar Tarea</h2>
+                <button class="close-button text-slate-400 hover:text-slate-700">&times;</button>
             </div>
-            <form id="task-form">
+            <form id="task-form" class="p-6 space-y-4">
                 <input type="hidden" id="task-id">
-                <label for="task-name">Nombre de la tarea</label>
-                <input type="text" id="task-name" placeholder="Ej: Revisión de cámaras de seguridad" required>
-                <label for="task-desc">Descripción</label>
-                <textarea id="task-desc" rows="4" placeholder="Ej: Cotizar y coordinar la mantención de las cámaras del condominio."></textarea>
-                <div class="form-grid">
-                    <div>
-                        <label for="task-category">Categoría</label>
-                        <select id="task-category"></select>
-                    </div>
-                    <div><label for="task-deadline">Plazo</label><input type="date" id="task-deadline"></div>
+                <div><label for="task-name" class="font-semibold text-slate-700">Nombre de la tarea</label><input type="text" id="task-name" class="mt-1 w-full p-2 border rounded-md" required></div>
+                <div><label for="task-desc" class="font-semibold text-slate-700">Descripción</label><textarea id="task-desc" rows="4" class="mt-1 w-full p-2 border rounded-md"></textarea></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label for="task-category" class="font-semibold text-slate-700">Categoría</label><select id="task-category" class="mt-1 w-full p-2 border rounded-md"></select></div>
+                    <div><label for="task-deadline" class="font-semibold text-slate-700">Plazo</label><input type="date" id="task-deadline" class="mt-1 w-full p-2 border rounded-md"></div>
                 </div>
-                <label for="task-progress">Porcentaje de avance (%)</label>
-                <input type="number" id="task-progress" min="0" max="100" value="0" required>
-                <button type="submit" class="btn btn-primary btn-full-width">Guardar Tarea</button>
+                <div><label for="task-progress" class="font-semibold text-slate-700">Porcentaje de avance (%)</label><input type="number" id="task-progress" min="0" max="100" value="0" class="mt-1 w-full p-2 border rounded-md" required></div>
+                <button type="submit" class="w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Guardar Tarea</button>
             </form>
         </div>
     </div>
     
-    <div id="pdf-preview-modal" class="modal">
-        <div class="modal-content" style="max-width: 840px;">
-             <div class="modal-header">
-                <h2 id="pdf-preview-title">Vista Previa del Informe</h2>
-                <button class="close-button">&times;</button>
+    <div id="pdf-preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center p-4 border-b border-slate-200">
+                <h2 class="text-xl font-bold text-slate-800">Vista Previa del Informe</h2>
+                <button class="close-button text-slate-400 hover:text-slate-700">&times;</button>
             </div>
-            <div id="pdf-preview-content" style="max-height: 70vh; overflow-y: auto;"></div>
+            <div id="pdf-preview-content" class="p-2 overflow-y-auto bg-slate-50 flex-grow"></div>
         </div>
     </div>
 
-    <input type="file" id="file-input" accept="application/json" style="display:none">
-    <div id="toast-container"></div>
+    <input type="file" id="file-input" class="hidden" accept="application/json">
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
         const CATEGORIES = ['ADMINISTRATIVA', 'FINANCIERA', 'SEGURIDAD', 'OPERATIVA', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
+        
+        // DOM Elements
         const reportDateInput = document.getElementById('report-date');
         const tasksContainer = document.getElementById('tasks-container');
         const btnAddTask = document.getElementById('btn-add-task');
+        
+        // Action menu elements
+        const actionsMenuContainer = document.getElementById('actions-menu-container');
+        const actionsMenuButton = document.getElementById('actions-menu-button');
+        const actionsDropdown = document.getElementById('actions-dropdown');
         const btnSave = document.getElementById('btn-save');
         const btnLoadFile = document.getElementById('btn-load-file');
         const btnGenerate = document.getElementById('btn-generate');
         const btnPreviewPDF = document.getElementById('btn-preview-pdf');
+        
         const fileInput = document.getElementById('file-input');
         const taskModal = document.getElementById('task-modal');
         const taskForm = document.getElementById('task-form');
         const modalTitle = document.getElementById('modal-title');
-        const closeButtons = document.querySelectorAll('.close-button');
         const pdfPreviewModal = document.getElementById('pdf-preview-modal');
         const pdfPreviewContent = document.getElementById('pdf-preview-content');
         const categorySelect = document.getElementById('task-category');
 
         let tasks = [];
 
+        // --- Local Storage ---
+        function saveStateToLocalStorage() {
+            const state = {
+                reportDate: reportDateInput.value,
+                tasks: tasks
+            };
+            localStorage.setItem('taskReportState', JSON.stringify(state));
+        }
+
+        function loadStateFromLocalStorage() {
+            const savedState = localStorage.getItem('taskReportState');
+            if (savedState) {
+                const state = JSON.parse(savedState);
+                tasks = state.tasks || [];
+                reportDateInput.value = state.reportDate || new Date().toISOString().split('T')[0];
+                renderTasks();
+                return true;
+            }
+            return false;
+        }
+
+        // --- UI Functions ---
         function populateCategorySelect() {
             categorySelect.innerHTML = CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('');
         }
         
         function showToast(message, type = 'success') {
             const toastContainer = document.getElementById('toast-container');
+            const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
+            toast.className = `toast transform translate-y-4 opacity-0 ${bgColor} text-white font-bold py-3 px-5 rounded-lg shadow-lg`;
             toast.textContent = message;
             toastContainer.appendChild(toast);
-            setTimeout(() => { toast.classList.add('show'); }, 10);
             setTimeout(() => {
-                toast.classList.remove('show');
+                toast.classList.remove('translate-y-4', 'opacity-0');
+            }, 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0');
                 setTimeout(() => toast.remove(), 500);
             }, 3000);
         }
         
         function formatInformeDate(dateStr) {
             if (!dateStr) return '';
-            const date = new Date(dateStr + 'T00:00:00-04:00');
-            return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
+            const date = new Date(dateStr + 'T00:00:00');
+            return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
         function renderTasks() {
             tasksContainer.innerHTML = '';
             if (tasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="card" style="text-align:center; color: var(--color-text-light);">No hay tareas. ¡Agrega una para comenzar!</div>`;
+                tasksContainer.innerHTML = `<div class="bg-white rounded-lg p-8 text-center text-slate-500">No hay tareas. ¡Agrega una para comenzar!</div>`;
                 return;
             }
             tasks.forEach((task, index) => {
+                const isOverdue = task.progress < 100 && task.deadline && new Date(task.deadline) < new Date();
+                const cardBorder = isOverdue ? 'border-red-500' : 'border-blue-600';
                 const taskCard = document.createElement('div');
-                taskCard.className = 'card task-card';
+                taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
                 taskCard.innerHTML = `
-                    <div class="task-header">
-                        <h3>${task.name}</h3>
-                        <div class="report-actions">
-                            <button class="btn btn-secondary btn-sm" data-edit-id="${index}" style="padding: 0.5em 1em;">Editar</button>
-                            <button class="btn btn-danger btn-sm" data-delete-id="${index}" style="padding: 0.5em 1em;">Eliminar</button>
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-bold text-slate-800">${task.name} ${isOverdue ? '<span class="text-xs font-bold text-red-600">(VENCIDA)</span>' : ''}</h3>
+                        <div class="flex-shrink-0 flex gap-2">
+                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${index}">Editar</button>
+                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${index}">Eliminar</button>
                         </div>
                     </div>
-                    <div class="task-body">
-                        <p>${task.description || '<i>Sin descripción.</i>'}</p>
-                        <progress value="${task.progress}" max="100"></progress>
-                    </div>
-                    <div class="task-footer">
+                    <p class="text-slate-600 mb-4">${task.description || '<i>Sin descripción.</i>'}</p>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2"><div class="bg-blue-600 h-2.5 rounded-full" style="width: ${task.progress}%"></div></div>
+                    <div class="flex justify-between items-center text-sm text-slate-500">
                         <span><strong>Categoría:</strong> ${task.category}</span>
-                        <span><strong>Plazo:</strong> ${task.deadline ? formatInformeDate(task.deadline) : 'No definido'}</span>
-                        <span><strong>Avance:</strong> ${task.progress}%</span>
+                        <span><strong>Plazo:</strong> ${task.deadline ? formatInformeDate(task.deadline) : 'N/A'}</span>
+                        <span class="font-bold">${task.progress}%</span>
                     </div>
                 `;
                 tasksContainer.appendChild(taskCard);
             });
+            saveStateToLocalStorage();
         }
         
+        function openModal(modal) { modal.classList.remove('hidden'); }
+        function closeModal(modal) { modal.classList.add('hidden'); }
+
         function openTaskModal(task = null, index = -1) {
             taskForm.reset();
-            document.getElementById('task-category').value = CATEGORIES[0];
+            categorySelect.value = CATEGORIES[0];
             if (task) {
                 modalTitle.textContent = 'Editar Tarea';
                 document.getElementById('task-id').value = index;
                 document.getElementById('task-name').value = task.name;
                 document.getElementById('task-desc').value = task.description;
-                document.getElementById('task-category').value = task.category;
+                categorySelect.value = task.category;
                 document.getElementById('task-deadline').value = task.deadline;
                 document.getElementById('task-progress').value = task.progress;
             } else {
                 modalTitle.textContent = 'Agregar Tarea';
                 document.getElementById('task-id').value = -1;
             }
-            taskModal.style.display = 'flex';
-        }
-
-        function closeModals() {
-            taskModal.style.display = 'none';
-            pdfPreviewModal.style.display = 'none';
+            openModal(taskModal);
         }
 
         taskForm.addEventListener('submit', (e) => {
@@ -349,28 +238,18 @@
             if (taskId > -1) tasks[taskId] = taskData;
             else tasks.push(taskData);
             renderTasks();
-            closeModals();
+            closeModal(taskModal);
         });
 
-        function gatherData() {
-            const sortedTasks = [...tasks].sort((a, b) => {
-                return CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category);
-            });
-            return {
-                reportDate: reportDateInput.value,
-                tasks: sortedTasks
-            };
+        // --- Data Handling ---
+        function getSortedTasks() {
+            return [...tasks].sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
         }
 
-        function loadData(data) {
-            reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
-            tasks = data.tasks || [];
-            renderTasks();
-        }
-
-        btnSave.addEventListener('click', () => {
+        btnSave.addEventListener('click', (e) => {
+            e.preventDefault();
             const dataToSave = { reportDate: reportDateInput.value, tasks: tasks };
-            const data = JSON.stringify(dataToSave);
+            const data = JSON.stringify(dataToSave, null, 2);
             const blob = new Blob([data], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -379,9 +258,15 @@
             a.click();
             URL.revokeObjectURL(url);
             showToast('Borrador guardado como archivo.');
+            closeModal(actionsDropdown.parentElement);
         });
         
-        btnLoadFile.addEventListener('click', () => fileInput.click());
+        btnLoadFile.addEventListener('click', (e) => {
+            e.preventDefault();
+            fileInput.click();
+            closeModal(actionsDropdown.parentElement);
+        });
+        
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -389,7 +274,9 @@
             reader.onload = (event) => {
                 try {
                     const data = JSON.parse(event.target.result);
-                    loadData(data);
+                    tasks = data.tasks || [];
+                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
+                    renderTasks();
                     showToast('Archivo cargado con éxito.');
                 } catch (err) { showToast('El archivo no es válido.', 'error'); }
             };
@@ -397,58 +284,61 @@
             fileInput.value = '';
         });
 
+        // --- PDF Generation ---
         function createPdfHtml(data) {
-            const logoHtml = `<img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" style="height: 60px; width: auto;" alt="Logo Cumbres de Quilpué">`;
             let lastCategory = null;
-            let html = `<div style="font-family: 'Inter', sans-serif; color: #333; padding: 40px; width: 780px; background: white;">
-                <header style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0a4d8c; padding-bottom: 20px; margin-bottom: 20px;">
-                    ${logoHtml}
-                    <div style="text-align: right;"><h1 style="font-size: 24px; color: #0a4d8c; margin: 0 0 10px 0;">Informe de Tareas</h1><p style="margin: 0; font-size: 14px;"><strong>Condominio Cumbres de Quilpué</strong></p></div>
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            let html = `<div style="font-family: sans-serif; color: #334155; padding: 40px; width: 780px; background: white;">
+                <header style="display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 20px;">
+                    <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" style="height: 60px; width: auto;" alt="Logo">
+                    <div>
+                        <h1 style="font-size: 26px; font-weight: bold; color: #1e293b; margin: 0;">Informe de Tareas</h1>
+                        <p style="margin: 0; font-size: 14px; color: #475569;">Comité Cumbres de Quilpué</p>
+                    </div>
                 </header>
                 <main>
-                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6;">
-                        <p style="margin: 0;"><strong>Para:</strong> Administración y Staff de Condominio Cumbres de Quilpué</p>
-                        <p style="margin: 5px 0;"><strong>De:</strong> Comité Cumbres de Quilpué</p>
+                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6;">
+                        <p style="margin: 0;"><strong>Para:</strong> Administración y Staff</p>
                         <p style="margin: 5px 0;"><strong>Fecha:</strong> ${formatInformeDate(data.reportDate)}</p>
-                        <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área y destacando aquellas que requieren atención especial.</p>
+                        <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área.</p>
                     </div>
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead>
-                            <tr>
-                                <th style="width: 25%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Tarea</th>
-                                <th style="width: 40%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Descripción</th>
-                                <th style="width: 15%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Plazo</th>
-                                <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Avance</th>
-                            </tr>
-                        </thead><tbody>`;
+                        <thead><tr>
+                            <th style="width: 25%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Tarea</th>
+                            <th style="width: 40%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Descripción</th>
+                            <th style="width: 15%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Plazo</th>
+                            <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Avance</th>
+                        </tr></thead><tbody>`;
             data.tasks.forEach(task => {
+                const isOverdue = task.progress < 100 && task.deadline && new Date(task.deadline) < today;
+                const rowStyle = isOverdue ? 'background-color: #FFF2F2;' : '';
                 if(task.category !== lastCategory) {
-                    html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: 700; font-size: 14px; color: #0a4d8c; border-bottom: 1px solid #0a4d8c;">Categoría: ${task.category}</td></tr>`;
+                    html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
                     lastCategory = task.category;
                 }
-                html += `<tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px; vertical-align: top;">${task.name}</td>
+                html += `<tr style="border-bottom: 1px solid #e2e8f0; ${rowStyle}">
+                        <td style="padding: 10px; vertical-align: top;">${task.name} ${isOverdue ? '<span style="color: #D9534F; font-weight: bold;">(Vencida)</span>' : ''}</td>
                         <td style="padding: 10px; vertical-align: top;">${task.description || '-'}</td>
                         <td style="padding: 10px; vertical-align: top;">${task.deadline ? formatInformeDate(task.deadline) : '-'}</td>
-                        <td style="padding: 10px; vertical-align: middle;">
-                            <div style="display: flex; align-items: center; gap: 5px;">
-                                <div style="flex-grow: 1; background-color: #e9ecef; border-radius: 5px; height: 10px;"><div style="width: ${task.progress}%; background-color: #0a4d8c; height: 10px; border-radius: 5px;"></div></div>
-                                <span style="font-size: 11px; font-weight: 500;">${task.progress}%</span>
-                            </div></td></tr>`;
+                        <td style="padding: 10px; vertical-align: middle;"><div style="display: flex; align-items: center; gap: 5px;">
+                            <div style="flex-grow: 1; background-color: #e2e8f0; border-radius: 9999px; height: 8px;"><div style="width: ${task.progress}%; background-color: #2563eb; height: 8px; border-radius: 9999px;"></div></div>
+                            <span style="font-size: 11px; font-weight: 500;">${task.progress}%</span>
+                        </div></td></tr>`;
             });
             html += `</tbody></table></main></div>`;
             return html;
         }
 
         async function generatePDF() {
-            const data = gatherData();
+            const data = { reportDate: reportDateInput.value, tasks: getSortedTasks() };
             if (!data.reportDate || data.tasks.length === 0) {
-                showToast('Debe seleccionar una fecha y agregar al menos una tarea.', 'error');
+                showToast('Debe seleccionar fecha y agregar tareas.', 'error');
                 return;
             }
             const pdfContainer = document.createElement('div');
-            pdfContainer.style.position = 'absolute';
-            pdfContainer.style.left = '-9999px';
+            pdfContainer.style.position = 'absolute'; pdfContainer.style.left = '-9999px';
             pdfContainer.innerHTML = createPdfHtml(data);
             document.body.appendChild(pdfContainer);
 
@@ -458,32 +348,33 @@
                 const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 2, useCORS: true });
                 const imgData = canvas.toDataURL('image/png');
 
+                const { width: imgWidth, height: imgHeight } = pdf.getImageProperties(imgData);
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
                 const margin = 40;
-                const imgProps = pdf.getImageProperties(imgData);
                 const pdfWidth = pageWidth - (margin * 2);
-                const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
+                const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
+                
                 let heightLeft = pdfHeight;
                 let position = 0;
 
-                pdf.addImage(imgData, 'PNG', margin, position + margin, pdfWidth, pdfHeight);
-                heightLeft -= (pageHeight - margin * 2);
-
+                pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, pdfHeight);
+                heightLeft -= (pageHeight - (margin * 2));
+                
                 while (heightLeft > 0) {
-                    position -= (pageHeight - margin * 2);
+                    position -= (pageHeight - (margin * 2));
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', margin, position, pdfWidth, pdfHeight);
-                    heightLeft -= (pageHeight - margin * 2);
+                    heightLeft -= (pageHeight - (margin * 2));
                 }
 
                 const pageCount = pdf.internal.getNumberOfPages();
                 for (let i = 1; i <= pageCount; i++) {
                     pdf.setPage(i);
                     pdf.setFontSize(8);
-                    pdf.setTextColor('#666');
-                    const footerY = pageHeight - margin + 15;
-                    pdf.text("Este informe y su contenido son de uso exclusivo para la Administración.", margin, footerY);
+                    pdf.setTextColor('#64748b');
+                    const footerY = pageHeight - 20;
+                    pdf.text("Informe de uso exclusivo para la Administración.", margin, footerY);
                     pdf.text("Comité Cumbres de Quilpué", pageWidth / 2, footerY, { align: 'center' });
                     pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
                 }
@@ -498,39 +389,66 @@
             }
         }
 
-        // --- EVENT LISTENERS ---
-        reportDateInput.addEventListener('change', () => {});
+        // --- Event Listeners ---
+        reportDateInput.addEventListener('change', saveStateToLocalStorage);
         btnAddTask.addEventListener('click', () => openTaskModal());
-        closeButtons.forEach(btn => btn.addEventListener('click', closeModals));
-        window.addEventListener('click', (e) => { if (e.target === taskModal || e.target === pdfPreviewModal) closeModals(); });
+        
+        document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
+            closeModal(taskModal);
+            closeModal(pdfPreviewModal);
+        });
+        
+        // Dropdown menu logic
+        actionsMenuButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            actionsDropdown.classList.toggle('hidden');
+        });
+        document.addEventListener('click', (e) => {
+            if (!actionsMenuContainer.contains(e.target)) {
+                actionsDropdown.classList.add('hidden');
+            }
+        });
+        
         tasksContainer.addEventListener('click', (e) => {
             const editButton = e.target.closest('[data-edit-id]');
             if (editButton) openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
+            
             const deleteButton = e.target.closest('[data-delete-id]');
             if (deleteButton) {
                 const index = parseInt(deleteButton.dataset.deleteId, 10);
-                if (confirm(`¿Estás seguro de que quieres eliminar la tarea "${tasks[index].name}"?`)) {
+                if (confirm(`¿Eliminar la tarea "${tasks[index].name}"?`)) {
                     tasks.splice(index, 1);
                     renderTasks();
                     showToast('Tarea eliminada.');
                 }
             }
         });
-        btnPreviewPDF.addEventListener('click', () => {
-            const data = gatherData();
+        
+        btnPreviewPDF.addEventListener('click', (e) => {
+            e.preventDefault();
+            const data = { reportDate: reportDateInput.value, tasks: getSortedTasks() };
             if (!data.reportDate || data.tasks.length === 0) {
-                showToast('Debe seleccionar fecha y agregar tareas para la vista previa.', 'error');
+                showToast('Debe agregar tareas para la vista previa.', 'error');
                 return;
             }
             pdfPreviewContent.innerHTML = createPdfHtml(data);
-            pdfPreviewModal.style.display = 'flex';
+            openModal(pdfPreviewModal);
+            closeModal(actionsDropdown.parentElement);
         });
-        btnGenerate.addEventListener('click', generatePDF);
 
-        // --- INITIALIZATION ---
+        btnGenerate.addEventListener('click', (e) => {
+            e.preventDefault();
+            generatePDF();
+            closeModal(actionsDropdown.parentElement);
+        });
+
+        // --- Initialization ---
         document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
         populateCategorySelect();
-        loadData({ reportDate: new Date().toISOString().split('T')[0] });
+        if (!loadStateFromLocalStorage()) {
+            reportDateInput.value = new Date().toISOString().split('T')[0];
+            renderTasks();
+        }
     });
     </script>
 </body>
