@@ -9,7 +9,6 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <style>
         /* Small custom style for toast notifications */
@@ -34,11 +33,45 @@
         .status-circle.completed { background-color: #22c55e; }
         .status-circle.overdue { background-color: #dc2626; } /* Darker red for overdue */
 
-        /* Style for drag and drop feedback */
-        .sortable-ghost {
-            opacity: 0.2;
-            background-color: #e2e8f0;
-            border: 2px dashed #94a3b8;
+        /* Custom styling for range input */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px;
+            background: #d1d5db; /* bg-gray-300 */
+            border-radius: 5px;
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2563eb; /* bg-blue-600 */
+            cursor: grab;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4); /* ring-blue-500 */
+            transition: background .15s ease-in-out;
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #2563eb; /* bg-blue-600 */
+            cursor: grab;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4); /* ring-blue-500 */
+            transition: background .15s ease-in-out;
+        }
+
+        input[type="range"]:active::-webkit-slider-thumb {
+            cursor: grabbing;
+        }
+         input[type="range"]:active::-moz-range-thumb {
+            cursor: grabbing;
         }
     </style>
 </head>
@@ -77,22 +110,22 @@
 
         <div class="bg-white shadow-md rounded-lg p-4 md:p-6 mb-6">
             <h2 class="text-xl font-bold text-slate-800 mb-4 text-center">Estado General de Tareas</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center mb-6">
-                <div>
-                    <div class="text-3xl font-bold" id="total-tasks-count">0</div>
-                    <p class="text-slate-500">Total de Tareas</p>
+            <div class="flex flex-wrap justify-center md:grid md:grid-cols-4 gap-2 md:gap-4 text-center mb-6">
+                <div class="border-2 border-slate-300 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
+                    <div class="text-xl md:text-3xl font-bold" id="total-tasks-count">0</div>
+                    <p class="text-slate-500 text-sm md:text-base">Total de Tareas</p>
                 </div>
-                <div>
-                    <div class="text-3xl font-bold text-green-600" id="completed-tasks-count">0</div>
-                    <p class="text-slate-500">Completadas</p>
+                <div class="border-2 border-green-600 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
+                    <div class="text-xl md:text-3xl font-bold text-green-600" id="completed-tasks-count">0</div>
+                    <p class="text-slate-500 text-sm md:text-base">Completadas</p>
                 </div>
-                <div>
-                    <div class="text-3xl font-bold text-yellow-600" id="in-progress-tasks-count">0</div>
-                    <p class="text-slate-500">En Progreso</p>
+                <div class="border-2 border-yellow-600 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
+                    <div class="text-xl md:text-3xl font-bold text-yellow-600" id="in-progress-tasks-count">0</div>
+                    <p class="text-slate-500 text-sm md:text-base">En Progreso</p>
                 </div>
-                <div>
-                    <div class="text-3xl font-bold text-red-600" id="overdue-tasks-count">0</div>
-                    <p class="text-slate-500">Vencidas / Sin Iniciar</p>
+                <div class="border-2 border-red-600 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
+                    <div class="text-xl md:text-3xl font-bold text-red-600" id="overdue-tasks-count">0</div>
+                    <p class="text-slate-500 text-sm md:text-base">Vencidas / Sin Iniciar</p>
                 </div>
             </div>
 
@@ -147,7 +180,10 @@
                     <div><label for="task-category" class="font-semibold text-slate-700">Categoría</label><select id="task-category" class="mt-1 w-full p-2 border rounded-md"></select></div>
                     <div><label for="task-deadline" class="font-semibold text-slate-700">Plazo</label><input type="date" id="task-deadline" class="mt-1 w-full p-2 border rounded-md"></div>
                 </div>
-                <div><label for="task-progress" class="font-semibold text-slate-700">Porcentaje de avance (%)</label><input type="number" id="task-progress" min="0" max="100" value="0" class="mt-1 w-full p-2 border rounded-md" required></div>
+                <div>
+                    <label for="task-progress" class="font-semibold text-slate-700">Porcentaje de avance (<span id="progress-value">0</span>%)</label>
+                    <input type="range" id="task-progress" min="0" max="100" value="0" class="mt-2 w-full">
+                </div>
                 <button type="submit" class="w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Guardar Tarea</button>
             </form>
         </div>
@@ -192,6 +228,10 @@
         const pdfPreviewContent = document.getElementById('pdf-preview-content');
         const categorySelect = document.getElementById('task-category');
 
+        // Task Form Progress elements
+        const taskProgressInput = document.getElementById('task-progress');
+        const progressValueSpan = document.getElementById('progress-value');
+
         // Stats elements
         const totalTasksCount = document.getElementById('total-tasks-count');
         const completedTasksCount = document.getElementById('completed-tasks-count');
@@ -204,7 +244,6 @@
         const searchTasksInput = document.getElementById('search-tasks');
 
         let tasks = []; // Global task array
-        let sortableInstance; // To store the SortableJS instance
 
         // --- Local Storage ---
         function saveStateToLocalStorage() {
@@ -219,7 +258,14 @@
             const savedState = localStorage.getItem('taskReportState');
             if (savedState) {
                 const state = JSON.parse(savedState);
-                tasks = state.tasks || [];
+                // Ensure default values for new properties if loading old data
+                tasks = (state.tasks || []).map(task => ({
+                    name: task.name || '',
+                    description: task.description || '',
+                    category: task.category || CATEGORIES[0],
+                    deadline: task.deadline || '',
+                    progress: task.progress !== undefined ? task.progress : 0
+                }));
                 reportDateInput.value = state.reportDate || new Date().toISOString().split('T')[0];
                 renderTasks(); // Render all tasks initially after loading
                 return true;
@@ -252,6 +298,7 @@
         function formatInformeDate(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr + 'T00:00:00'); // Ensure date is treated as local date
+            // Using 'es-CL' for Chile's locale, which typically uses "dd de MMMM de yyyy"
             return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
@@ -262,52 +309,47 @@
             const deadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
 
             if (task.progress === 100) return 'completed';
-            if (task.progress === 0) {
-                if (deadlineDate && deadlineDate < today) return 'overdue'; // Not started and overdue
-                return 'not-started';
+            
+            // If progress is between 0 and 99
+            if (deadlineDate && deadlineDate < today) {
+                return 'overdue'; // Overdue if past deadline and not completed
             }
-            if (task.progress > 0 && task.progress < 100) {
-                if (deadlineDate && deadlineDate < today) return 'overdue'; // In progress but overdue
-                return 'in-progress';
-            }
-            return 'not-started'; // Default if none applies
+            
+            if (task.progress === 0) return 'not-started';
+            if (task.progress > 0 && task.progress < 100) return 'in-progress';
+            
+            return 'not-started'; // Default case, should ideally not be hit
         }
 
         function getStatusColorClass(status) {
             if (status === 'completed') return 'progress-green';
             if (status === 'in-progress') return 'progress-yellow';
-            if (status === 'not-started') return 'progress-red';
-            if (status === 'overdue') return 'progress-red'; // Overdue tasks also show red on cards
+            if (status === 'not-started' || status === 'overdue') return 'progress-red';
             return '';
         }
 
         function updateTaskStatistics() {
-            const today = new Date();
-            today.setHours(0,0,0,0);
-
             const total = tasks.length;
             let completed = 0;
             let inProgress = 0;
             let overdue = 0;
+            let notStarted = 0;
 
             tasks.forEach(task => {
                 const status = getTaskStatus(task);
                 if (status === 'completed') completed++;
                 else if (status === 'in-progress') inProgress++;
-                else if (status === 'not-started' || status === 'overdue') overdue++; // Combine not-started and overdue for this count
+                else if (status === 'overdue') overdue++;
+                else if (status === 'not-started') notStarted++;
             });
 
             totalTasksCount.textContent = total;
             completedTasksCount.textContent = completed;
             inProgressTasksCount.textContent = inProgress;
-            overdueTasksCount.textContent = overdue; // This now includes not-started tasks too
+            overdueTasksCount.textContent = overdue + notStarted; // Combine not-started and overdue for display
         }
         
         function renderTasks() {
-            if (sortableInstance) {
-                sortableInstance.destroy(); // Destroy existing instance before re-rendering
-            }
-
             tasksContainer.innerHTML = '';
             
             const selectedCategory = filterCategorySelect.value;
@@ -332,24 +374,25 @@
             }
 
             filteredTasks.forEach((task, index) => {
+                // Find the original index in the 'tasks' array, not the filtered index
+                const originalIndex = tasks.indexOf(task); 
                 const taskStatus = getTaskStatus(task);
-                const cardBorder = taskStatus === 'overdue' ? 'border-red-500' : 'border-blue-600'; // Specific border for overdue
+                const cardBorder = taskStatus === 'overdue' ? 'border-red-500' : 'border-blue-600';
                 const progressColorClass = getStatusColorClass(taskStatus);
                 
                 const taskCard = document.createElement('div');
-                taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4 cursor-grab`;
-                taskCard.dataset.id = tasks.indexOf(task); // Use original index for sorting
+                taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
                 taskCard.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
                         <h3 class="text-lg font-bold text-slate-800">${task.name} ${taskStatus === 'overdue' ? '<span class="text-xs font-bold text-red-600">(VENCIDA)</span>' : ''}</h3>
                         <div class="flex-shrink-0 flex gap-2">
-                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${tasks.indexOf(task)}">Editar</button>
-                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${tasks.indexOf(task)}">Eliminar</button>
+                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${originalIndex}">Editar</button>
+                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${originalIndex}">Eliminar</button>
                         </div>
                     </div>
                     <p class="text-slate-600 mb-4">${task.description || '<i>Sin descripción.</i>'}</p>
                     <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
-                        <div class="h-2.5 rounded-full ${progressColorClass}" style="width: ${task.progress > 0 ? (task.progress === 100 ? '100%' : (task.progress < 100 && task.progress > 0 ? '50%' : '0%')) : '0%'}"></div>
+                        <div class="h-2.5 rounded-full ${progressColorClass}" style="width: ${taskStatus === 'completed' ? '100%' : (taskStatus === 'not-started' ? '0%' : '50%')}"></div>
                     </div>
                     <div class="flex justify-between items-center text-sm text-slate-500">
                         <span><strong>Categoría:</strong> ${task.category}</span>
@@ -364,7 +407,6 @@
             });
             updateTaskStatistics();
             saveStateToLocalStorage();
-            initializeSortable(); // Re-initialize SortableJS after rendering
         }
         
         function openModal(modal) { modal.classList.remove('hidden'); }
@@ -372,7 +414,10 @@
 
         function openTaskModal(task = null, index = -1) {
             taskForm.reset();
-            populateCategorySelects(); // Ensure categories are always up-to-date
+            populateCategorySelects();
+            // Set default date for new tasks
+            document.getElementById('task-deadline').value = new Date().toISOString().split('T')[0];
+
             if (task) {
                 modalTitle.textContent = 'Editar Tarea';
                 document.getElementById('task-id').value = index;
@@ -380,61 +425,33 @@
                 document.getElementById('task-desc').value = task.description;
                 categorySelect.value = task.category;
                 document.getElementById('task-deadline').value = task.deadline;
-                document.getElementById('task-progress').value = task.progress;
+                taskProgressInput.value = task.progress; // Set slider value
             } else {
                 modalTitle.textContent = 'Agregar Tarea';
                 document.getElementById('task-id').value = -1;
-                // Set default date for new tasks
-                document.getElementById('task-deadline').value = new Date().toISOString().split('T')[0];
+                taskProgressInput.value = 0; // Reset slider for new task
             }
+            // Update the displayed progress value
+            progressValueSpan.textContent = taskProgressInput.value;
             openModal(taskModal);
         }
 
-        // --- Drag and Drop (SortableJS) ---
-        function initializeSortable() {
-            sortableInstance = Sortable.create(tasksContainer, {
-                animation: 150,
-                handle: '.cursor-grab', // Make the whole card draggable
-                ghostClass: 'sortable-ghost',
-                onEnd: function (evt) {
-                    const oldIndex = evt.oldIndex;
-                    const newIndex = evt.newIndex;
-                    // Get the actual task objects based on their current position in the DOM
-                    // This is crucial because renderTasks filters them, but 'tasks' array is the source of truth
-                    const draggedElementId = evt.item.dataset.id;
-                    const draggedTask = tasks[draggedElementId];
-                    
-                    // Remove the dragged task from its old position in the original tasks array
-                    tasks.splice(draggedElementId, 1);
-                    
-                    // Re-insert it at the new position
-                    // This part needs careful handling as newIndex relates to the *filtered* list order
-                    // Simplest approach: find the task that was at newIndex in the original tasks array and insert before/after it
-                    // For now, let's just re-render and sort by category for consistency with PDF.
-                    // If true arbitrary re-ordering is desired, 'tasks' needs to be re-ordered.
-                    // For a simpler approach, re-ordering only applies to what's rendered, and the PDF will still be sorted by category.
-                    // To truly re-order, the 'tasks' array must be modified.
-                    // For a direct mapping to the rendered tasks, we need to get the actual DOM elements' underlying task indices.
-                    
-                    // A more robust way to handle drag & drop when filtering is involved:
-                    // 1. Get the current order of elements in the DOM after drag.
-                    const newOrderedIds = Array.from(tasksContainer.children).map(el => parseInt(el.dataset.id, 10));
-                    
-                    // 2. Create a new 'tasks' array based on this order.
-                    const reorderedTasks = [];
-                    newOrderedIds.forEach(id => reorderedTasks.push(tasks[id]));
-                    
-                    // 3. Replace the global 'tasks' array.
-                    tasks = reorderedTasks;
-                    
-                    renderTasks(); // Re-render to ensure consistency
-                    showToast('Tareas reordenadas.');
-                }
+        // --- PDF Generation ---
+        // Helper function to get tasks sorted by category for PDF
+        function getSortedTasksForPDF() {
+            // Sort by category first, then by task status (completed last, then in-progress, then not-started/overdue)
+            return [...tasks].sort((a, b) => {
+                const categoryCompare = CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category);
+                if (categoryCompare !== 0) return categoryCompare;
+
+                const statusA = getTaskStatus(a);
+                const statusB = getTaskStatus(b);
+
+                const statusOrder = { 'overdue': 0, 'not-started': 1, 'in-progress': 2, 'completed': 3 };
+                return statusOrder[statusA] - statusOrder[statusB];
             });
         }
 
-
-        // --- PDF Generation ---
         function createPdfHtml(data) {
             let lastCategory = null;
             const today = new Date();
@@ -455,25 +472,28 @@
                 else if (status === 'not-started') notStartedCount++;
             });
 
-            const overallProgressPercentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+            // Consider only tasks that are NOT completed for overall progress feedback
+            const totalNonCompleted = total - completedCount;
+            const overallCompletionPercentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+            
             let professionalSummary = '';
 
             if (total === 0) {
                 professionalSummary = "Actualmente no hay tareas registradas en el sistema. Se recomienda agregar tareas para iniciar el seguimiento.";
             } else if (completedCount === total) {
-                professionalSummary = "Todas las tareas han sido completadas exitosamente, demostrando un excelente nivel de ejecución.";
+                professionalSummary = "Todas las tareas han sido completadas exitosamente, demostrando un excelente nivel de ejecución y gestión eficiente.";
             } else if (overdueCount > 0) {
-                if (completedCount / total > 0.7) { // mostly completed but some overdue
-                     professionalSummary = `El progreso general de las tareas es muy bueno, con ${completedCount} tareas completadas. Sin embargo, se identifican ${overdueCount} tareas vencidas, que requieren atención prioritaria para su resolución.`;
-                } else if (overdueCount / total > 0.5) { // many overdue
-                    professionalSummary = `Se observa un número significativo de tareas vencidas (${overdueCount} tareas), lo que indica la necesidad de revisar los plazos o asignar recursos adicionales para evitar mayores retrasos.`;
-                } else { // some overdue
-                    professionalSummary = `El seguimiento de tareas muestra un avance constante, pero ${overdueCount} tareas han superado su plazo de entrega. Se sugiere priorizar estas tareas para mantener el cronograma.`;
+                if (overallCompletionPercentage > 70) {
+                     professionalSummary = `El progreso general de las tareas es muy bueno (${overallCompletionPercentage}% completado). Sin embargo, se identifican **${overdueCount} tareas vencidas** que requieren atención prioritaria para su resolución inmediata.`;
+                } else if (overdueCount / total > 0.5) {
+                    professionalSummary = `Se observa un número significativo de **tareas vencidas (${overdueCount})**, lo que indica la necesidad urgente de revisar los plazos, reasignar recursos o ajustar el enfoque para evitar mayores retrasos y asegurar la continuidad.`;
+                } else {
+                    professionalSummary = `El seguimiento de tareas muestra un avance constante, pero **${overdueCount} tareas han superado su plazo de entrega**. Se sugiere priorizar la finalización de estas tareas para mantener el cronograma y mitigar riesgos.`;
                 }
             } else if (inProgressCount > 0) {
-                professionalSummary = `El avance general de las tareas es satisfactorio, con ${inProgressCount} tareas en curso y ${completedCount} ya completadas. Se recomienda mantener el enfoque para asegurar la finalización en tiempo.`;
-            } else { // all not started, but not overdue
-                professionalSummary = "Todas las tareas están actualmente en estado 'No Iniciadas'. Se recomienda comenzar con la planificación y asignación de recursos para cada una.";
+                professionalSummary = `El avance general de las tareas es satisfactorio (${overallCompletionPercentage}% completado), con **${inProgressCount} tareas en curso** y un buen número ya finalizadas. Se recomienda mantener el enfoque para asegurar la finalización en tiempo y forma.`;
+            } else { // all not started, and not overdue
+                professionalSummary = "Todas las tareas están actualmente en estado 'No Iniciadas'. Se recomienda comenzar con la planificación y asignación de recursos para cada una a la brevedad posible.";
             }
 
 
@@ -495,7 +515,7 @@
                     <h3 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Resumen Ejecutivo:</h3>
                     <div style="background-color: #e0f2fe; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6; border-left: 4px solid #38bdf8;">
                         <p>${professionalSummary}</p>
-                        <p style="margin-top: 10px;"><strong>Estadísticas Clave:</strong> Total: ${total}, Completadas: ${completedCount}, En Progreso: ${inProgressCount}, Vencidas/No Iniciadas: ${overdueCount + notStartedCount}.</p>
+                        <p style="margin-top: 10px;"><strong>Estadísticas Clave:</strong> Total: ${total}, Completadas: ${completedCount}, En Progreso: ${inProgressCount}, Vencidas: ${overdueCount}, No Iniciadas: ${notStartedCount}.</p>
                     </div>
 
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
@@ -514,7 +534,7 @@
                 if (taskStatus === 'completed') { statusText = 'Completada'; statusCircleClass = 'completed'; }
                 else if (taskStatus === 'in-progress') { statusText = 'En Progreso'; statusCircleClass = 'in-progress'; }
                 else if (taskStatus === 'not-started') { statusText = 'No Iniciada'; statusCircleClass = 'not-started'; }
-                else if (taskStatus === 'overdue') { statusText = 'Vencida'; statusCircleClass = 'overdue'; } // Specific text for overdue
+                else if (taskStatus === 'overdue') { statusText = 'Vencida'; statusCircleClass = 'overdue'; }
 
                 if(task.category !== lastCategory) {
                     html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
@@ -572,9 +592,10 @@
 
                 pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
                 heightLeft -= pdfHeight;
-                position -= (pdfHeight - (margin * 2));
+                // Adjust position for subsequent pages. This accounts for the content within margins.
+                position -= (pdfHeight - (margin * 2)); 
 
-                while (heightLeft > -margin) {
+                while (heightLeft > -margin) { // Keep adding pages until content fully rendered
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
                     heightLeft -= pdfHeight;
@@ -620,20 +641,24 @@
                 description: document.getElementById('task-desc').value.trim(),
                 category: categorySelect.value,
                 deadline: document.getElementById('task-deadline').value,
-                progress: parseInt(document.getElementById('task-progress').value, 10),
+                progress: parseInt(taskProgressInput.value, 10), // Get value from range input
             };
             const taskId = parseInt(document.getElementById('task-id').value, 10);
             
             if (taskId > -1) {
-                // Update existing task
-                tasks[taskId] = taskData;
+                tasks[taskId] = taskData; // Update existing task
             } else {
-                // Add new task
-                tasks.push(taskData);
+                tasks.push(taskData); // Add new task
             }
             renderTasks();
             closeModal(taskModal);
         });
+
+        // Update progress value span as slider moves
+        taskProgressInput.addEventListener('input', () => {
+            progressValueSpan.textContent = taskProgressInput.value;
+        });
+
 
         actionsMenuButton.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -654,13 +679,15 @@
 
         tasksContainer.addEventListener('click', (e) => {
             const editButton = e.target.closest('[data-edit-id]');
-            if (editButton) openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
+            if (editButton) {
+                openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
+            }
             
             const deleteButton = e.target.closest('[data-delete-id]');
             if (deleteButton) {
-                const index = parseInt(deleteButton.dataset.delete-id, 10);
-                if (confirm(`¿Eliminar la tarea "${tasks[index].name}"?`)) {
-                    tasks.splice(index, 1);
+                const indexToDelete = parseInt(deleteButton.dataset.deleteId, 10);
+                if (confirm(`¿Eliminar la tarea "${tasks[indexToDelete].name}"?`)) {
+                    tasks.splice(indexToDelete, 1);
                     renderTasks();
                     showToast('Tarea eliminada.');
                 }
@@ -704,10 +731,10 @@
                     reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
                     renderTasks();
                     showToast('Archivo cargado con éxito.');
-                } catch (err) { showToast('El archivo no es válido.', 'error'); }
+                } catch (err) { showToast('El archivo no es válido o está corrupto.', 'error'); }
             };
             reader.readAsText(file);
-            fileInput.value = '';
+            fileInput.value = ''; // Clear the input so the same file can be loaded again
         });
 
         btnPreviewPDF.addEventListener('click', (e) => {
@@ -735,11 +762,6 @@
         filterStatusSelect.addEventListener('change', renderTasks);
         searchTasksInput.addEventListener('input', renderTasks);
 
-        // Helper function to get tasks sorted by category for PDF
-        function getSortedTasksForPDF() {
-            return [...tasks].sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
-        }
-
         // --- Initialization ---
         document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
         populateCategorySelects();
@@ -747,7 +769,6 @@
             reportDateInput.value = new Date().toISOString().split('T')[0];
             renderTasks();
         }
-        initializeSortable(); // Initialize SortableJS on page load
     });
     </script>
 </body>
