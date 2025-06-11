@@ -730,4 +730,61 @@
         
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (!file
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    // Ensure that loaded tasks have all properties, provide defaults if missing
+                    tasks = (data.tasks || []).map(task => ({
+                        name: task.name || '',
+                        description: task.description || '',
+                        category: task.category || CATEGORIES[0],
+                        deadline: task.deadline || '',
+                        progress: task.progress !== undefined ? task.progress : 0
+                    }));
+                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
+                    renderTasks();
+                    showToast('Archivo cargado con éxito.');
+                } catch (err) { showToast('El archivo no es válido o está corrupto.', 'error'); }
+            };
+            reader.readAsText(file);
+            fileInput.value = ''; // Clear the input so the same file can be loaded again
+        });
+
+        btnPreviewPDF.addEventListener('click', (e) => {
+            e.preventDefault();
+            const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
+            if (!data.reportDate) {
+                showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
+                return;
+            }
+            if (data.tasks.length === 0) {
+                showToast('Debe agregar al menos una tarea para la vista previa.', 'error');
+                return;
+            }
+            pdfPreviewContent.innerHTML = createPdfHtml(data);
+            openModal(pdfPreviewModal);
+        });
+
+        btnGenerate.addEventListener('click', (e) => {
+            e.preventDefault();
+            generatePDF();
+        });
+
+        // Filter and Search Event Listeners
+        filterCategorySelect.addEventListener('change', renderTasks);
+        filterStatusSelect.addEventListener('change', renderTasks);
+        searchTasksInput.addEventListener('input', renderTasks);
+
+        // --- Initialization ---
+        document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
+        populateCategorySelects();
+        if (!loadStateFromLocalStorage()) {
+            reportDateInput.value = new Date().toISOString().split('T')[0];
+            renderTasks();
+        }
+    });
+    </script>
+</body>
+</html>
