@@ -9,11 +9,36 @@
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     
     <style>
         /* Small custom style for toast notifications */
         .toast {
             transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        /* Custom styles for progress color and state circles */
+        .progress-red { background-color: #ef4444; } /* Not started / Overdue */
+        .progress-yellow { background-color: #f59e0b; } /* In progress */
+        .progress-green { background-color: #22c55e; } /* Completed */
+
+        .status-circle {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 4px;
+        }
+        .status-circle.not-started { background-color: #ef4444; }
+        .status-circle.in-progress { background-color: #f59e0b; }
+        .status-circle.completed { background-color: #22c55e; }
+        .status-circle.overdue { background-color: #dc2626; } /* Darker red for overdue */
+
+        /* Style for drag and drop feedback */
+        .sortable-ghost {
+            opacity: 0.2;
+            background-color: #e2e8f0;
+            border: 2px dashed #94a3b8;
         }
     </style>
 </head>
@@ -48,6 +73,51 @@
         <div class="bg-white shadow-md rounded-lg p-4 md:p-6 mb-6">
             <label for="report-date" class="block text-sm font-bold text-slate-700 mb-2">Fecha de Emisión del Informe:</label>
             <input type="date" id="report-date" class="w-full md:w-auto p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg p-4 md:p-6 mb-6">
+            <h2 class="text-xl font-bold text-slate-800 mb-4 text-center">Estado General de Tareas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-center mb-6">
+                <div>
+                    <div class="text-3xl font-bold" id="total-tasks-count">0</div>
+                    <p class="text-slate-500">Total de Tareas</p>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-green-600" id="completed-tasks-count">0</div>
+                    <p class="text-slate-500">Completadas</p>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-yellow-600" id="in-progress-tasks-count">0</div>
+                    <p class="text-slate-500">En Progreso</p>
+                </div>
+                <div>
+                    <div class="text-3xl font-bold text-red-600" id="overdue-tasks-count">0</div>
+                    <p class="text-slate-500">Vencidas / Sin Iniciar</p>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <div class="flex-grow">
+                    <label for="filter-category" class="block text-sm font-bold text-slate-700 mb-1">Filtrar por Categoría:</label>
+                    <select id="filter-category" class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Todas las Categorías</option>
+                    </select>
+                </div>
+                <div class="flex-grow">
+                    <label for="filter-status" class="block text-sm font-bold text-slate-700 mb-1">Filtrar por Estado:</label>
+                    <select id="filter-status" class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        <option value="all">Todos los Estados</option>
+                        <option value="not-started">No Iniciadas</option>
+                        <option value="in-progress">En Progreso</option>
+                        <option value="completed">Completadas</option>
+                        <option value="overdue">Vencidas</option>
+                    </select>
+                </div>
+                <div class="flex-grow md:w-1/2">
+                    <label for="search-tasks" class="block text-sm font-bold text-slate-700 mb-1">Buscar Tarea:</label>
+                    <input type="text" id="search-tasks" placeholder="Buscar por nombre o descripción..." class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                </div>
+            </div>
         </div>
         
         <div id="tasks-container" class="space-y-4">
@@ -122,7 +192,19 @@
         const pdfPreviewContent = document.getElementById('pdf-preview-content');
         const categorySelect = document.getElementById('task-category');
 
-        let tasks = [];
+        // Stats elements
+        const totalTasksCount = document.getElementById('total-tasks-count');
+        const completedTasksCount = document.getElementById('completed-tasks-count');
+        const inProgressTasksCount = document.getElementById('in-progress-tasks-count');
+        const overdueTasksCount = document.getElementById('overdue-tasks-count');
+
+        // Filter elements
+        const filterCategorySelect = document.getElementById('filter-category');
+        const filterStatusSelect = document.getElementById('filter-status');
+        const searchTasksInput = document.getElementById('search-tasks');
+
+        let tasks = []; // Global task array
+        let sortableInstance; // To store the SortableJS instance
 
         // --- Local Storage ---
         function saveStateToLocalStorage() {
@@ -139,15 +221,16 @@
                 const state = JSON.parse(savedState);
                 tasks = state.tasks || [];
                 reportDateInput.value = state.reportDate || new Date().toISOString().split('T')[0];
-                renderTasks();
+                renderTasks(); // Render all tasks initially after loading
                 return true;
             }
             return false;
         }
 
         // --- UI Functions ---
-        function populateCategorySelect() {
+        function populateCategorySelects() {
             categorySelect.innerHTML = CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+            filterCategorySelect.innerHTML = `<option value="all">Todas las Categorías</option>` + CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('');
         }
         
         function showToast(message, type = 'success') {
@@ -172,36 +255,116 @@
             return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
+        // Determines the status of a task based on progress and deadline
+        function getTaskStatus(task) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const deadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
+
+            if (task.progress === 100) return 'completed';
+            if (task.progress === 0) {
+                if (deadlineDate && deadlineDate < today) return 'overdue'; // Not started and overdue
+                return 'not-started';
+            }
+            if (task.progress > 0 && task.progress < 100) {
+                if (deadlineDate && deadlineDate < today) return 'overdue'; // In progress but overdue
+                return 'in-progress';
+            }
+            return 'not-started'; // Default if none applies
+        }
+
+        function getStatusColorClass(status) {
+            if (status === 'completed') return 'progress-green';
+            if (status === 'in-progress') return 'progress-yellow';
+            if (status === 'not-started') return 'progress-red';
+            if (status === 'overdue') return 'progress-red'; // Overdue tasks also show red on cards
+            return '';
+        }
+
+        function updateTaskStatistics() {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+
+            const total = tasks.length;
+            let completed = 0;
+            let inProgress = 0;
+            let overdue = 0;
+
+            tasks.forEach(task => {
+                const status = getTaskStatus(task);
+                if (status === 'completed') completed++;
+                else if (status === 'in-progress') inProgress++;
+                else if (status === 'not-started' || status === 'overdue') overdue++; // Combine not-started and overdue for this count
+            });
+
+            totalTasksCount.textContent = total;
+            completedTasksCount.textContent = completed;
+            inProgressTasksCount.textContent = inProgress;
+            overdueTasksCount.textContent = overdue; // This now includes not-started tasks too
+        }
+        
         function renderTasks() {
+            if (sortableInstance) {
+                sortableInstance.destroy(); // Destroy existing instance before re-rendering
+            }
+
             tasksContainer.innerHTML = '';
-            if (tasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="bg-white rounded-lg p-8 text-center text-slate-500">No hay tareas. ¡Agrega una para comenzar!</div>`;
+            
+            const selectedCategory = filterCategorySelect.value;
+            const selectedStatus = filterStatusSelect.value;
+            const searchTerm = searchTasksInput.value.toLowerCase();
+
+            const filteredTasks = tasks.filter(task => {
+                const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory;
+                const taskStatus = getTaskStatus(task);
+                const matchesStatus = selectedStatus === 'all' || taskStatus === selectedStatus;
+                const matchesSearch = searchTerm === '' || 
+                                      task.name.toLowerCase().includes(searchTerm) || 
+                                      task.description.toLowerCase().includes(searchTerm);
+                
+                return matchesCategory && matchesStatus && matchesSearch;
+            });
+
+            if (filteredTasks.length === 0) {
+                tasksContainer.innerHTML = `<div class="bg-white rounded-lg p-8 text-center text-slate-500">No hay tareas que coincidan con los filtros aplicados.</div>`;
+                updateTaskStatistics(); // Still update counts based on ALL tasks
                 return;
             }
-            tasks.forEach((task, index) => {
-                const isOverdue = task.progress < 100 && task.deadline && new Date(task.deadline + 'T00:00:00') < new Date();
-                const cardBorder = isOverdue ? 'border-red-500' : 'border-blue-600';
+
+            filteredTasks.forEach((task, index) => {
+                const taskStatus = getTaskStatus(task);
+                const cardBorder = taskStatus === 'overdue' ? 'border-red-500' : 'border-blue-600'; // Specific border for overdue
+                const progressColorClass = getStatusColorClass(taskStatus);
+                
                 const taskCard = document.createElement('div');
-                taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
+                taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4 cursor-grab`;
+                taskCard.dataset.id = tasks.indexOf(task); // Use original index for sorting
                 taskCard.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-lg font-bold text-slate-800">${task.name} ${isOverdue ? '<span class="text-xs font-bold text-red-600">(VENCIDA)</span>' : ''}</h3>
+                        <h3 class="text-lg font-bold text-slate-800">${task.name} ${taskStatus === 'overdue' ? '<span class="text-xs font-bold text-red-600">(VENCIDA)</span>' : ''}</h3>
                         <div class="flex-shrink-0 flex gap-2">
-                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${index}">Editar</button>
-                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${index}">Eliminar</button>
+                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${tasks.indexOf(task)}">Editar</button>
+                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${tasks.indexOf(task)}">Eliminar</button>
                         </div>
                     </div>
                     <p class="text-slate-600 mb-4">${task.description || '<i>Sin descripción.</i>'}</p>
-                    <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2"><div class="bg-blue-600 h-2.5 rounded-full" style="width: ${task.progress}%"></div></div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
+                        <div class="h-2.5 rounded-full ${progressColorClass}" style="width: ${task.progress > 0 ? (task.progress === 100 ? '100%' : (task.progress < 100 && task.progress > 0 ? '50%' : '0%')) : '0%'}"></div>
+                    </div>
                     <div class="flex justify-between items-center text-sm text-slate-500">
                         <span><strong>Categoría:</strong> ${task.category}</span>
                         <span><strong>Plazo:</strong> ${task.deadline ? formatInformeDate(task.deadline) : 'N/A'}</span>
-                        <span class="font-bold">${task.progress}%</span>
+                        <span class="font-bold">
+                            <span class="status-circle ${taskStatus === 'completed' ? 'completed' : (taskStatus === 'in-progress' ? 'in-progress' : (taskStatus === 'overdue' ? 'overdue' : 'not-started'))}"></span>
+                            ${taskStatus === 'completed' ? 'Completada' : (taskStatus === 'in-progress' ? 'En Progreso' : (taskStatus === 'overdue' ? 'Vencida' : 'No Iniciada'))}
+                        </span>
                     </div>
                 `;
                 tasksContainer.appendChild(taskCard);
             });
+            updateTaskStatistics();
             saveStateToLocalStorage();
+            initializeSortable(); // Re-initialize SortableJS after rendering
         }
         
         function openModal(modal) { modal.classList.remove('hidden'); }
@@ -209,7 +372,7 @@
 
         function openTaskModal(task = null, index = -1) {
             taskForm.reset();
-            categorySelect.value = CATEGORIES[0];
+            populateCategorySelects(); // Ensure categories are always up-to-date
             if (task) {
                 modalTitle.textContent = 'Editar Tarea';
                 document.getElementById('task-id').value = index;
@@ -221,20 +384,98 @@
             } else {
                 modalTitle.textContent = 'Agregar Tarea';
                 document.getElementById('task-id').value = -1;
+                // Set default date for new tasks
+                document.getElementById('task-deadline').value = new Date().toISOString().split('T')[0];
             }
             openModal(taskModal);
         }
 
-        // --- Data Handling ---
-        function getSortedTasks() {
-            return [...tasks].sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+        // --- Drag and Drop (SortableJS) ---
+        function initializeSortable() {
+            sortableInstance = Sortable.create(tasksContainer, {
+                animation: 150,
+                handle: '.cursor-grab', // Make the whole card draggable
+                ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const oldIndex = evt.oldIndex;
+                    const newIndex = evt.newIndex;
+                    // Get the actual task objects based on their current position in the DOM
+                    // This is crucial because renderTasks filters them, but 'tasks' array is the source of truth
+                    const draggedElementId = evt.item.dataset.id;
+                    const draggedTask = tasks[draggedElementId];
+                    
+                    // Remove the dragged task from its old position in the original tasks array
+                    tasks.splice(draggedElementId, 1);
+                    
+                    // Re-insert it at the new position
+                    // This part needs careful handling as newIndex relates to the *filtered* list order
+                    // Simplest approach: find the task that was at newIndex in the original tasks array and insert before/after it
+                    // For now, let's just re-render and sort by category for consistency with PDF.
+                    // If true arbitrary re-ordering is desired, 'tasks' needs to be re-ordered.
+                    // For a simpler approach, re-ordering only applies to what's rendered, and the PDF will still be sorted by category.
+                    // To truly re-order, the 'tasks' array must be modified.
+                    // For a direct mapping to the rendered tasks, we need to get the actual DOM elements' underlying task indices.
+                    
+                    // A more robust way to handle drag & drop when filtering is involved:
+                    // 1. Get the current order of elements in the DOM after drag.
+                    const newOrderedIds = Array.from(tasksContainer.children).map(el => parseInt(el.dataset.id, 10));
+                    
+                    // 2. Create a new 'tasks' array based on this order.
+                    const reorderedTasks = [];
+                    newOrderedIds.forEach(id => reorderedTasks.push(tasks[id]));
+                    
+                    // 3. Replace the global 'tasks' array.
+                    tasks = reorderedTasks;
+                    
+                    renderTasks(); // Re-render to ensure consistency
+                    showToast('Tareas reordenadas.');
+                }
+            });
         }
+
 
         // --- PDF Generation ---
         function createPdfHtml(data) {
             let lastCategory = null;
             const today = new Date();
-            today.setHours(0,0,0,0); // Reset time for accurate date comparison
+            today.setHours(0,0,0,0);
+
+            // Calculate overall stats for the PDF summary
+            const total = data.tasks.length;
+            let completedCount = 0;
+            let inProgressCount = 0;
+            let overdueCount = 0;
+            let notStartedCount = 0;
+
+            data.tasks.forEach(task => {
+                const status = getTaskStatus(task);
+                if (status === 'completed') completedCount++;
+                else if (status === 'in-progress') inProgressCount++;
+                else if (status === 'overdue') overdueCount++;
+                else if (status === 'not-started') notStartedCount++;
+            });
+
+            const overallProgressPercentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+            let professionalSummary = '';
+
+            if (total === 0) {
+                professionalSummary = "Actualmente no hay tareas registradas en el sistema. Se recomienda agregar tareas para iniciar el seguimiento.";
+            } else if (completedCount === total) {
+                professionalSummary = "Todas las tareas han sido completadas exitosamente, demostrando un excelente nivel de ejecución.";
+            } else if (overdueCount > 0) {
+                if (completedCount / total > 0.7) { // mostly completed but some overdue
+                     professionalSummary = `El progreso general de las tareas es muy bueno, con ${completedCount} tareas completadas. Sin embargo, se identifican ${overdueCount} tareas vencidas, que requieren atención prioritaria para su resolución.`;
+                } else if (overdueCount / total > 0.5) { // many overdue
+                    professionalSummary = `Se observa un número significativo de tareas vencidas (${overdueCount} tareas), lo que indica la necesidad de revisar los plazos o asignar recursos adicionales para evitar mayores retrasos.`;
+                } else { // some overdue
+                    professionalSummary = `El seguimiento de tareas muestra un avance constante, pero ${overdueCount} tareas han superado su plazo de entrega. Se sugiere priorizar estas tareas para mantener el cronograma.`;
+                }
+            } else if (inProgressCount > 0) {
+                professionalSummary = `El avance general de las tareas es satisfactorio, con ${inProgressCount} tareas en curso y ${completedCount} ya completadas. Se recomienda mantener el enfoque para asegurar la finalización en tiempo.`;
+            } else { // all not started, but not overdue
+                professionalSummary = "Todas las tareas están actualmente en estado 'No Iniciadas'. Se recomienda comenzar con la planificación y asignación de recursos para cada una.";
+            }
+
 
             let html = `<div style="font-family: sans-serif; color: #334155; padding: 40px; width: 780px; background: white;">
                 <header style="display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 20px;">
@@ -250,36 +491,53 @@
                         <p style="margin: 5px 0;"><strong>Fecha:</strong> ${formatInformeDate(data.reportDate)}</p>
                         <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área.</p>
                     </div>
+                    
+                    <h3 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Resumen Ejecutivo:</h3>
+                    <div style="background-color: #e0f2fe; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6; border-left: 4px solid #38bdf8;">
+                        <p>${professionalSummary}</p>
+                        <p style="margin-top: 10px;"><strong>Estadísticas Clave:</strong> Total: ${total}, Completadas: ${completedCount}, En Progreso: ${inProgressCount}, Vencidas/No Iniciadas: ${overdueCount + notStartedCount}.</p>
+                    </div>
+
                     <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                         <thead><tr>
                             <th style="width: 25%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Tarea</th>
                             <th style="width: 40%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Descripción</th>
                             <th style="width: 15%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Plazo</th>
-                            <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Avance</th>
+                            <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Estado</th>
                         </tr></thead><tbody>`;
             data.tasks.forEach(task => {
-                const taskDeadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
-                const isOverdue = task.progress < 100 && taskDeadlineDate && taskDeadlineDate < today;
-                const rowStyle = isOverdue ? 'background-color: #FFF2F2;' : '';
+                const taskStatus = getTaskStatus(task);
+                const rowStyle = taskStatus === 'overdue' ? 'background-color: #FFF2F2;' : '';
+                
+                let statusText = '';
+                let statusCircleClass = '';
+                if (taskStatus === 'completed') { statusText = 'Completada'; statusCircleClass = 'completed'; }
+                else if (taskStatus === 'in-progress') { statusText = 'En Progreso'; statusCircleClass = 'in-progress'; }
+                else if (taskStatus === 'not-started') { statusText = 'No Iniciada'; statusCircleClass = 'not-started'; }
+                else if (taskStatus === 'overdue') { statusText = 'Vencida'; statusCircleClass = 'overdue'; } // Specific text for overdue
+
                 if(task.category !== lastCategory) {
                     html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
                     lastCategory = task.category;
                 }
                 html += `<tr style="border-bottom: 1px solid #e2e8f0; ${rowStyle}">
-                        <td style="padding: 10px; vertical-align: top;">${task.name} ${isOverdue ? '<span style="color: #D9534F; font-weight: bold;">(Vencida)</span>' : ''}</td>
+                        <td style="padding: 10px; vertical-align: top;">${task.name}</td>
                         <td style="padding: 10px; vertical-align: top;">${task.description || '-'}</td>
                         <td style="padding: 10px; vertical-align: top;">${task.deadline ? formatInformeDate(task.deadline) : '-'}</td>
-                        <td style="padding: 10px; vertical-align: middle;"><div style="display: flex; align-items: center; gap: 5px;">
-                            <div style="flex-grow: 1; background-color: #e2e8f0; border-radius: 9999px; height: 8px;"><div style="width: ${task.progress}%; background-color: #2563eb; height: 8px; border-radius: 9999px;"></div></div>
-                            <span style="font-size: 11px; font-weight: 500;">${task.progress}%</span>
-                        </div></td></tr>`;
+                        <td style="padding: 10px; vertical-align: middle;">
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <span style="width: 10px; height: 10px; border-radius: 50%; display: inline-block;" class="status-circle ${statusCircleClass}"></span>
+                                <span>${statusText}</span>
+                            </div>
+                        </td>
+                    </tr>`;
             });
             html += `</tbody></table></main></div>`;
             return html;
         }
 
         async function generatePDF() {
-            const data = { reportDate: reportDateInput.value, tasks: getSortedTasks() };
+            const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
             if (!data.reportDate) {
                 showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
                 return;
@@ -289,7 +547,6 @@
                 return;
             }
 
-            // Create a temporary div to render the HTML for html2canvas
             const pdfContainer = document.createElement('div');
             pdfContainer.style.position = 'absolute';
             pdfContainer.style.left = '-9999px'; // Move off-screen
@@ -301,33 +558,29 @@
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
                 
-                // Use a higher scale for better quality
                 const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 3, useCORS: true });
                 const imgData = canvas.toDataURL('image/png');
 
                 const imgProps = pdf.getImageProperties(imgData);
                 const pdfWidth = pdf.internal.pageSize.getWidth();
                 const pdfHeight = pdf.internal.pageSize.getHeight();
-                const imgHeight = (imgProps.height * pdfWidth) / imgProps.width; // Scale image to fit page width
+                const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
 
                 let heightLeft = imgHeight;
                 let position = 0;
-                const margin = 40; // Consistent margin
+                const margin = 40;
 
-                // Add first page
                 pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
                 heightLeft -= pdfHeight;
-                position -= (pdfHeight - (margin * 2)); // Adjust position for subsequent pages
+                position -= (pdfHeight - (margin * 2));
 
-                // Add remaining pages if content is taller than one page
-                while (heightLeft > -margin) { // Allow for a small overlap or margin
+                while (heightLeft > -margin) {
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
                     heightLeft -= pdfHeight;
                     position -= (pdfHeight - (margin * 2));
                 }
                 
-                // Add footer to each page
                 const pageCount = pdf.internal.getNumberOfPages();
                 for (let i = 1; i <= pageCount; i++) {
                     pdf.setPage(i);
@@ -345,7 +598,6 @@
                 console.error('Error generando PDF:', e);
                 showToast('Hubo un error al generar el PDF.', 'error');
             } finally {
-                // Clean up the temporary div
                 if (pdfContainer.parentNode) {
                     pdfContainer.parentNode.removeChild(pdfContainer);
                 }
@@ -356,7 +608,6 @@
         reportDateInput.addEventListener('change', saveStateToLocalStorage);
         btnAddTask.addEventListener('click', () => openTaskModal());
         
-        // Universal close button for modals
         document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
             closeModal(taskModal);
             closeModal(pdfPreviewModal);
@@ -372,28 +623,31 @@
                 progress: parseInt(document.getElementById('task-progress').value, 10),
             };
             const taskId = parseInt(document.getElementById('task-id').value, 10);
-            if (taskId > -1) tasks[taskId] = taskData;
-            else tasks.push(taskData);
+            
+            if (taskId > -1) {
+                // Update existing task
+                tasks[taskId] = taskData;
+            } else {
+                // Add new task
+                tasks.push(taskData);
+            }
             renderTasks();
             closeModal(taskModal);
         });
 
-        // Dropdown menu logic
         actionsMenuButton.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevents the document click listener from immediately closing it
+            e.stopPropagation();
             actionsDropdown.classList.toggle('hidden');
         });
         
-        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!actionsMenuContainer.contains(e.target)) {
                 actionsDropdown.classList.add('hidden');
             }
         });
         
-        // Close dropdown after an action is selected (delegated to parent)
         actionsDropdown.addEventListener('click', (e) => {
-            if (e.target.tagName === 'A') { // Check if a link within the dropdown was clicked
+            if (e.target.tagName === 'A') {
                 actionsDropdown.classList.add('hidden');
             }
         });
@@ -404,7 +658,7 @@
             
             const deleteButton = e.target.closest('[data-delete-id]');
             if (deleteButton) {
-                const index = parseInt(deleteButton.dataset.deleteId, 10);
+                const index = parseInt(deleteButton.dataset.delete-id, 10);
                 if (confirm(`¿Eliminar la tarea "${tasks[index].name}"?`)) {
                     tasks.splice(index, 1);
                     renderTasks();
@@ -439,19 +693,26 @@
             reader.onload = (event) => {
                 try {
                     const data = JSON.parse(event.target.result);
-                    tasks = data.tasks || [];
+                    // Ensure that loaded tasks have all properties, provide defaults if missing
+                    tasks = (data.tasks || []).map(task => ({
+                        name: task.name || '',
+                        description: task.description || '',
+                        category: task.category || CATEGORIES[0],
+                        deadline: task.deadline || '',
+                        progress: task.progress !== undefined ? task.progress : 0
+                    }));
                     reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
                     renderTasks();
                     showToast('Archivo cargado con éxito.');
                 } catch (err) { showToast('El archivo no es válido.', 'error'); }
             };
             reader.readAsText(file);
-            fileInput.value = ''; // Clear the input so the same file can be loaded again
+            fileInput.value = '';
         });
 
         btnPreviewPDF.addEventListener('click', (e) => {
             e.preventDefault();
-            const data = { reportDate: reportDateInput.value, tasks: getSortedTasks() };
+            const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
             if (!data.reportDate) {
                 showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
                 return;
@@ -469,13 +730,24 @@
             generatePDF();
         });
 
+        // Filter and Search Event Listeners
+        filterCategorySelect.addEventListener('change', renderTasks);
+        filterStatusSelect.addEventListener('change', renderTasks);
+        searchTasksInput.addEventListener('input', renderTasks);
+
+        // Helper function to get tasks sorted by category for PDF
+        function getSortedTasksForPDF() {
+            return [...tasks].sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
+        }
+
         // --- Initialization ---
         document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
-        populateCategorySelect();
+        populateCategorySelects();
         if (!loadStateFromLocalStorage()) {
             reportDateInput.value = new Date().toISOString().split('T')[0];
             renderTasks();
         }
+        initializeSortable(); // Initialize SortableJS on page load
     });
     </script>
 </body>
