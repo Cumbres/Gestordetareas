@@ -51,7 +51,7 @@
         </div>
         
         <div id="tasks-container" class="space-y-4">
-            </div>
+        </div>
         
         <button id="btn-add-task" class="mt-6 w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-[1.02]">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
@@ -60,7 +60,7 @@
     </main>
     
     <footer class="bg-slate-200 text-slate-600 text-center p-4 mt-8">
-        <p id="footer-text">&copy; 2025 Condominio Cumbres de Quilpué. Todos los derechos reservados.</p>
+        <p id="footer-text"></p>
     </footer>
 
     <div id="task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
@@ -168,7 +168,7 @@
         
         function formatInformeDate(dateStr) {
             if (!dateStr) return '';
-            const date = new Date(dateStr + 'T00:00:00');
+            const date = new Date(dateStr + 'T00:00:00'); // Ensure date is treated as local date
             return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
@@ -179,7 +179,7 @@
                 return;
             }
             tasks.forEach((task, index) => {
-                const isOverdue = task.progress < 100 && task.deadline && new Date(task.deadline) < new Date();
+                const isOverdue = task.progress < 100 && task.deadline && new Date(task.deadline + 'T00:00:00') < new Date();
                 const cardBorder = isOverdue ? 'border-red-500' : 'border-blue-600';
                 const taskCard = document.createElement('div');
                 taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
@@ -225,70 +225,16 @@
             openModal(taskModal);
         }
 
-        taskForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const taskData = {
-                name: document.getElementById('task-name').value.trim(),
-                description: document.getElementById('task-desc').value.trim(),
-                category: categorySelect.value,
-                deadline: document.getElementById('task-deadline').value,
-                progress: parseInt(document.getElementById('task-progress').value, 10),
-            };
-            const taskId = parseInt(document.getElementById('task-id').value, 10);
-            if (taskId > -1) tasks[taskId] = taskData;
-            else tasks.push(taskData);
-            renderTasks();
-            closeModal(taskModal);
-        });
-
         // --- Data Handling ---
         function getSortedTasks() {
             return [...tasks].sort((a, b) => CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category));
         }
 
-        btnSave.addEventListener('click', (e) => {
-            e.preventDefault();
-            const dataToSave = { reportDate: reportDateInput.value, tasks: tasks };
-            const data = JSON.stringify(dataToSave, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `borrador_tareas_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('Borrador guardado como archivo.');
-            closeModal(actionsDropdown.parentElement);
-        });
-        
-        btnLoadFile.addEventListener('click', (e) => {
-            e.preventDefault();
-            fileInput.click();
-            closeModal(actionsDropdown.parentElement);
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    tasks = data.tasks || [];
-                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
-                    renderTasks();
-                    showToast('Archivo cargado con éxito.');
-                } catch (err) { showToast('El archivo no es válido.', 'error'); }
-            };
-            reader.readAsText(file);
-            fileInput.value = '';
-        });
-
         // --- PDF Generation ---
         function createPdfHtml(data) {
             let lastCategory = null;
             const today = new Date();
-            today.setHours(0,0,0,0);
+            today.setHours(0,0,0,0); // Reset time for accurate date comparison
 
             let html = `<div style="font-family: sans-serif; color: #334155; padding: 40px; width: 780px; background: white;">
                 <header style="display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 20px;">
@@ -312,7 +258,8 @@
                             <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Avance</th>
                         </tr></thead><tbody>`;
             data.tasks.forEach(task => {
-                const isOverdue = task.progress < 100 && task.deadline && new Date(task.deadline) < today;
+                const taskDeadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
+                const isOverdue = task.progress < 100 && taskDeadlineDate && taskDeadlineDate < today;
                 const rowStyle = isOverdue ? 'background-color: #FFF2F2;' : '';
                 if(task.category !== lastCategory) {
                     html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
@@ -333,50 +280,63 @@
 
         async function generatePDF() {
             const data = { reportDate: reportDateInput.value, tasks: getSortedTasks() };
-            if (!data.reportDate || data.tasks.length === 0) {
-                showToast('Debe seleccionar fecha y agregar tareas.', 'error');
+            if (!data.reportDate) {
+                showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
                 return;
             }
+            if (data.tasks.length === 0) {
+                showToast('Debe agregar al menos una tarea para generar el PDF.', 'error');
+                return;
+            }
+
+            // Create a temporary div to render the HTML for html2canvas
             const pdfContainer = document.createElement('div');
-            pdfContainer.style.position = 'absolute'; pdfContainer.style.left = '-9999px';
+            pdfContainer.style.position = 'absolute';
+            pdfContainer.style.left = '-9999px'; // Move off-screen
+            pdfContainer.style.width = '794px'; // A4 width at 96 DPI (approx 210mm * 96dpi/25.4mm/px)
             pdfContainer.innerHTML = createPdfHtml(data);
             document.body.appendChild(pdfContainer);
 
             try {
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-                const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 2, useCORS: true });
+                
+                // Use a higher scale for better quality
+                const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 3, useCORS: true });
                 const imgData = canvas.toDataURL('image/png');
 
-                const { width: imgWidth, height: imgHeight } = pdf.getImageProperties(imgData);
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const pageHeight = pdf.internal.pageSize.getHeight();
-                const margin = 40;
-                const pdfWidth = pageWidth - (margin * 2);
-                const pdfHeight = (imgHeight * pdfWidth) / imgWidth;
-                
-                let heightLeft = pdfHeight;
+                const imgProps = pdf.getImageProperties(imgData);
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const imgHeight = (imgProps.height * pdfWidth) / imgProps.width; // Scale image to fit page width
+
+                let heightLeft = imgHeight;
                 let position = 0;
+                const margin = 40; // Consistent margin
 
-                pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, pdfHeight);
-                heightLeft -= (pageHeight - (margin * 2));
-                
-                while (heightLeft > 0) {
-                    position -= (pageHeight - (margin * 2));
+                // Add first page
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                heightLeft -= pdfHeight;
+                position -= (pdfHeight - (margin * 2)); // Adjust position for subsequent pages
+
+                // Add remaining pages if content is taller than one page
+                while (heightLeft > -margin) { // Allow for a small overlap or margin
                     pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', margin, position, pdfWidth, pdfHeight);
-                    heightLeft -= (pageHeight - (margin * 2));
+                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
+                    heightLeft -= pdfHeight;
+                    position -= (pdfHeight - (margin * 2));
                 }
-
+                
+                // Add footer to each page
                 const pageCount = pdf.internal.getNumberOfPages();
                 for (let i = 1; i <= pageCount; i++) {
                     pdf.setPage(i);
                     pdf.setFontSize(8);
                     pdf.setTextColor('#64748b');
-                    const footerY = pageHeight - 20;
+                    const footerY = pdfHeight - 20;
                     pdf.text("Informe de uso exclusivo para la Administración.", margin, footerY);
-                    pdf.text("Comité Cumbres de Quilpué", pageWidth / 2, footerY, { align: 'center' });
-                    pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
+                    pdf.text("Comité Cumbres de Quilpué", pdfWidth / 2, footerY, { align: 'center' });
+                    pdf.text(`Página ${i} de ${pageCount}`, pdfWidth - margin, footerY, { align: 'right' });
                 }
 
                 pdf.save(`Informe_Tareas_${data.reportDate}.pdf`);
@@ -385,7 +345,10 @@
                 console.error('Error generando PDF:', e);
                 showToast('Hubo un error al generar el PDF.', 'error');
             } finally {
-                document.body.removeChild(pdfContainer);
+                // Clean up the temporary div
+                if (pdfContainer.parentNode) {
+                    pdfContainer.parentNode.removeChild(pdfContainer);
+                }
             }
         }
 
@@ -393,22 +356,48 @@
         reportDateInput.addEventListener('change', saveStateToLocalStorage);
         btnAddTask.addEventListener('click', () => openTaskModal());
         
+        // Universal close button for modals
         document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
             closeModal(taskModal);
             closeModal(pdfPreviewModal);
         });
         
+        taskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const taskData = {
+                name: document.getElementById('task-name').value.trim(),
+                description: document.getElementById('task-desc').value.trim(),
+                category: categorySelect.value,
+                deadline: document.getElementById('task-deadline').value,
+                progress: parseInt(document.getElementById('task-progress').value, 10),
+            };
+            const taskId = parseInt(document.getElementById('task-id').value, 10);
+            if (taskId > -1) tasks[taskId] = taskData;
+            else tasks.push(taskData);
+            renderTasks();
+            closeModal(taskModal);
+        });
+
         // Dropdown menu logic
         actionsMenuButton.addEventListener('click', (e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // Prevents the document click listener from immediately closing it
             actionsDropdown.classList.toggle('hidden');
         });
+        
+        // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
             if (!actionsMenuContainer.contains(e.target)) {
                 actionsDropdown.classList.add('hidden');
             }
         });
         
+        // Close dropdown after an action is selected (delegated to parent)
+        actionsDropdown.addEventListener('click', (e) => {
+            if (e.target.tagName === 'A') { // Check if a link within the dropdown was clicked
+                actionsDropdown.classList.add('hidden');
+            }
+        });
+
         tasksContainer.addEventListener('click', (e) => {
             const editButton = e.target.closest('[data-edit-id]');
             if (editButton) openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
@@ -424,22 +413,60 @@
             }
         });
         
+        btnSave.addEventListener('click', (e) => {
+            e.preventDefault();
+            const dataToSave = { reportDate: reportDateInput.value, tasks: tasks };
+            const data = JSON.stringify(dataToSave, null, 2);
+            const blob = new Blob([data], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `borrador_tareas_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Borrador guardado como archivo.');
+        });
+        
+        btnLoadFile.addEventListener('click', (e) => {
+            e.preventDefault();
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                try {
+                    const data = JSON.parse(event.target.result);
+                    tasks = data.tasks || [];
+                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
+                    renderTasks();
+                    showToast('Archivo cargado con éxito.');
+                } catch (err) { showToast('El archivo no es válido.', 'error'); }
+            };
+            reader.readAsText(file);
+            fileInput.value = ''; // Clear the input so the same file can be loaded again
+        });
+
         btnPreviewPDF.addEventListener('click', (e) => {
             e.preventDefault();
             const data = { reportDate: reportDateInput.value, tasks: getSortedTasks() };
-            if (!data.reportDate || data.tasks.length === 0) {
-                showToast('Debe agregar tareas para la vista previa.', 'error');
+            if (!data.reportDate) {
+                showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
+                return;
+            }
+            if (data.tasks.length === 0) {
+                showToast('Debe agregar al menos una tarea para la vista previa.', 'error');
                 return;
             }
             pdfPreviewContent.innerHTML = createPdfHtml(data);
             openModal(pdfPreviewModal);
-            closeModal(actionsDropdown.parentElement);
         });
 
         btnGenerate.addEventListener('click', (e) => {
             e.preventDefault();
             generatePDF();
-            closeModal(actionsDropdown.parentElement);
         });
 
         // --- Initialization ---
