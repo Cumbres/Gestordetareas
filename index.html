@@ -298,27 +298,31 @@
         function formatInformeDate(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr + 'T00:00:00'); // Ensure date is treated as local date
-            // Using 'es-CL' for Chile's locale, which typically uses "dd de MMMM de yyyy"
+            // Using 'es-CL' for Chile's locale, which typically uses "dd de MMMM de YYYY"
             return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
-        // Determines the status of a task based on progress and deadline
+        // Determines the status of a task and calculates days overdue
         function getTaskStatus(task) {
-            const today = new Date();
-            today.setHours(0,0,0,0);
+            const reportDateVal = reportDateInput.value;
+            const today = reportDateVal ? new Date(reportDateVal + 'T00:00:00') : new Date();
+            today.setHours(0,0,0,0); // Normalize to start of day
+
             const deadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
 
-            if (task.progress === 100) return 'completed';
+            if (task.progress === 100) return { status: 'completed', daysOverdue: 0 };
             
-            // If progress is between 0 and 99
+            let daysOverdue = 0;
             if (deadlineDate && deadlineDate < today) {
-                return 'overdue'; // Overdue if past deadline and not completed
+                const diffTime = Math.abs(today.getTime() - deadlineDate.getTime());
+                daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                return { status: 'overdue', daysOverdue: daysOverdue }; // Overdue if past deadline and not completed
             }
             
-            if (task.progress === 0) return 'not-started';
-            if (task.progress > 0 && task.progress < 100) return 'in-progress';
+            if (task.progress === 0) return { status: 'not-started', daysOverdue: 0 };
+            if (task.progress > 0 && task.progress < 100) return { status: 'in-progress', daysOverdue: 0 };
             
-            return 'not-started'; // Default case, should ideally not be hit
+            return { status: 'not-started', daysOverdue: 0 }; // Default case, should ideally not be hit
         }
 
         function getStatusColorClass(status) {
@@ -336,7 +340,7 @@
             let notStarted = 0;
 
             tasks.forEach(task => {
-                const status = getTaskStatus(task);
+                const { status } = getTaskStatus(task);
                 if (status === 'completed') completed++;
                 else if (status === 'in-progress') inProgress++;
                 else if (status === 'overdue') overdue++;
@@ -358,7 +362,7 @@
 
             const filteredTasks = tasks.filter(task => {
                 const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory;
-                const taskStatus = getTaskStatus(task);
+                const { status: taskStatus } = getTaskStatus(task);
                 const matchesStatus = selectedStatus === 'all' || taskStatus === selectedStatus;
                 const matchesSearch = searchTerm === '' || 
                                       task.name.toLowerCase().includes(searchTerm) || 
@@ -373,18 +377,28 @@
                 return;
             }
 
-            filteredTasks.forEach((task, index) => {
+            filteredTasks.forEach((task) => {
                 // Find the original index in the 'tasks' array, not the filtered index
                 const originalIndex = tasks.indexOf(task); 
-                const taskStatus = getTaskStatus(task);
+                const { status: taskStatus, daysOverdue } = getTaskStatus(task);
                 const cardBorder = taskStatus === 'overdue' ? 'border-red-500' : 'border-blue-600';
                 const progressColorClass = getStatusColorClass(taskStatus);
                 
+                let statusText = '';
+                let statusCircleClass = '';
+                if (taskStatus === 'completed') { statusText = 'Completada'; statusCircleClass = 'completed'; }
+                else if (taskStatus === 'in-progress') { statusText = 'En Progreso'; statusCircleClass = 'in-progress'; }
+                else if (taskStatus === 'not-started') { statusText = 'No Iniciada'; statusCircleClass = 'not-started'; }
+                else if (taskStatus === 'overdue') { 
+                    statusText = `Vencida (${daysOverdue} días)`; 
+                    statusCircleClass = 'overdue'; 
+                }
+
                 const taskCard = document.createElement('div');
                 taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
                 taskCard.innerHTML = `
                     <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-lg font-bold text-slate-800">${task.name} ${taskStatus === 'overdue' ? '<span class="text-xs font-bold text-red-600">(VENCIDA)</span>' : ''}</h3>
+                        <h3 class="text-lg font-bold text-slate-800">${task.name}</h3>
                         <div class="flex-shrink-0 flex gap-2">
                             <button class="text-slate-500 hover:text-blue-600" data-edit-id="${originalIndex}">Editar</button>
                             <button class="text-slate-500 hover:text-red-600" data-delete-id="${originalIndex}">Eliminar</button>
@@ -398,8 +412,8 @@
                         <span><strong>Categoría:</strong> ${task.category}</span>
                         <span><strong>Plazo:</strong> ${task.deadline ? formatInformeDate(task.deadline) : 'N/A'}</span>
                         <span class="font-bold">
-                            <span class="status-circle ${taskStatus === 'completed' ? 'completed' : (taskStatus === 'in-progress' ? 'in-progress' : (taskStatus === 'overdue' ? 'overdue' : 'not-started'))}"></span>
-                            ${taskStatus === 'completed' ? 'Completada' : (taskStatus === 'in-progress' ? 'En Progreso' : (taskStatus === 'overdue' ? 'Vencida' : 'No Iniciada'))}
+                            <span class="status-circle ${statusCircleClass}"></span>
+                            ${statusText}
                         </span>
                     </div>
                 `;
@@ -415,7 +429,7 @@
         function openTaskModal(task = null, index = -1) {
             taskForm.reset();
             populateCategorySelects();
-            // Set default date for new tasks
+            // Set default date for new tasks to today
             document.getElementById('task-deadline').value = new Date().toISOString().split('T')[0];
 
             if (task) {
@@ -439,13 +453,13 @@
         // --- PDF Generation ---
         // Helper function to get tasks sorted by category for PDF
         function getSortedTasksForPDF() {
-            // Sort by category first, then by task status (completed last, then in-progress, then not-started/overdue)
+            // Sort by category first, then by task status (overdue first, then not-started, then in-progress, then completed)
             return [...tasks].sort((a, b) => {
                 const categoryCompare = CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category);
                 if (categoryCompare !== 0) return categoryCompare;
 
-                const statusA = getTaskStatus(a);
-                const statusB = getTaskStatus(b);
+                const statusA = getTaskStatus(a).status;
+                const statusB = getTaskStatus(b).status;
 
                 const statusOrder = { 'overdue': 0, 'not-started': 1, 'in-progress': 2, 'completed': 3 };
                 return statusOrder[statusA] - statusOrder[statusB];
@@ -454,7 +468,7 @@
 
         function createPdfHtml(data) {
             let lastCategory = null;
-            const today = new Date();
+            const today = new Date(data.reportDate + 'T00:00:00'); // Use report date for PDF
             today.setHours(0,0,0,0);
 
             // Calculate overall stats for the PDF summary
@@ -465,15 +479,13 @@
             let notStartedCount = 0;
 
             data.tasks.forEach(task => {
-                const status = getTaskStatus(task);
+                const { status } = getTaskStatus(task); // Use getTaskStatus with the current report date
                 if (status === 'completed') completedCount++;
                 else if (status === 'in-progress') inProgressCount++;
                 else if (status === 'overdue') overdueCount++;
                 else if (status === 'not-started') notStartedCount++;
             });
 
-            // Consider only tasks that are NOT completed for overall progress feedback
-            const totalNonCompleted = total - completedCount;
             const overallCompletionPercentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
             
             let professionalSummary = '';
@@ -526,7 +538,7 @@
                             <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Estado</th>
                         </tr></thead><tbody>`;
             data.tasks.forEach(task => {
-                const taskStatus = getTaskStatus(task);
+                const { status: taskStatus, daysOverdue } = getTaskStatus(task);
                 const rowStyle = taskStatus === 'overdue' ? 'background-color: #FFF2F2;' : '';
                 
                 let statusText = '';
@@ -534,7 +546,10 @@
                 if (taskStatus === 'completed') { statusText = 'Completada'; statusCircleClass = 'completed'; }
                 else if (taskStatus === 'in-progress') { statusText = 'En Progreso'; statusCircleClass = 'in-progress'; }
                 else if (taskStatus === 'not-started') { statusText = 'No Iniciada'; statusCircleClass = 'not-started'; }
-                else if (taskStatus === 'overdue') { statusText = 'Vencida'; statusCircleClass = 'overdue'; }
+                else if (taskStatus === 'overdue') { 
+                    statusText = `Vencida (${daysOverdue} días)`; 
+                    statusCircleClass = 'overdue'; 
+                }
 
                 if(task.category !== lastCategory) {
                     html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
@@ -626,7 +641,7 @@
         }
 
         // --- Event Listeners ---
-        reportDateInput.addEventListener('change', saveStateToLocalStorage);
+        reportDateInput.addEventListener('change', renderTasks); // Re-render tasks when report date changes to update overdue status
         btnAddTask.addEventListener('click', () => openTaskModal());
         
         document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
@@ -715,61 +730,4 @@
         
         fileInput.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    // Ensure that loaded tasks have all properties, provide defaults if missing
-                    tasks = (data.tasks || []).map(task => ({
-                        name: task.name || '',
-                        description: task.description || '',
-                        category: task.category || CATEGORIES[0],
-                        deadline: task.deadline || '',
-                        progress: task.progress !== undefined ? task.progress : 0
-                    }));
-                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
-                    renderTasks();
-                    showToast('Archivo cargado con éxito.');
-                } catch (err) { showToast('El archivo no es válido o está corrupto.', 'error'); }
-            };
-            reader.readAsText(file);
-            fileInput.value = ''; // Clear the input so the same file can be loaded again
-        });
-
-        btnPreviewPDF.addEventListener('click', (e) => {
-            e.preventDefault();
-            const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
-            if (!data.reportDate) {
-                showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
-                return;
-            }
-            if (data.tasks.length === 0) {
-                showToast('Debe agregar al menos una tarea para la vista previa.', 'error');
-                return;
-            }
-            pdfPreviewContent.innerHTML = createPdfHtml(data);
-            openModal(pdfPreviewModal);
-        });
-
-        btnGenerate.addEventListener('click', (e) => {
-            e.preventDefault();
-            generatePDF();
-        });
-
-        // Filter and Search Event Listeners
-        filterCategorySelect.addEventListener('change', renderTasks);
-        filterStatusSelect.addEventListener('change', renderTasks);
-        searchTasksInput.addEventListener('input', renderTasks);
-
-        // --- Initialization ---
-        document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
-        populateCategorySelects();
-        if (!loadStateFromLocalStorage()) {
-            reportDateInput.value = new Date().toISOString().split('T')[0];
-            renderTasks();
-        }
-    });
-    </script>
-</body>
-</html>
+            if (!file
