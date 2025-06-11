@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Informe de Tareas | Comité Cumbres de Quilpué</title>
+    <title>Plataforma de Informes | Comité Cumbres de Quilpué</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
-        /* --- 🎨 1. Diseño y Estética: Variables y Estilos Base --- */
         :root {
             --font-family: 'Inter', sans-serif;
             --color-primary: #0a4d8c;
@@ -28,68 +27,49 @@
             --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
             --spacing-unit: 1rem;
         }
-
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
+        *, *::before, *::after { box-sizing: border-box; }
         body {
             font-family: var(--font-family);
             background-color: var(--color-bg);
             margin: 0;
-            padding-top: 100px; /* Space for fixed header */
+            padding-top: 100px;
             color: var(--color-text);
             font-size: 16px;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
         }
-        
-        main {
-            flex-grow: 1;
-        }
-
-        /* --- 🧑‍💻 1. UX: Barra de Navegación Fija --- */
+        main { flex-grow: 1; }
         .app-header {
             background-color: var(--color-surface);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            padding: calc(var(--spacing-unit)) calc(var(--spacing-unit) * 2);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
+            top: 0; left: 0; right: 0;
             z-index: 1000;
             display: flex;
             justify-content: space-between;
             align-items: center;
             flex-wrap: wrap;
         }
-        
-        .header-title {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .header-title img {
-            height: 50px;
-            width: auto;
-        }
-
-        .header-title h1 {
+        .header-title { display: flex; align-items: center; gap: 15px; }
+        .header-title img { height: 50px; width: auto; }
+        .header-title .title-text h1 {
             font-size: 1.5rem;
             color: var(--color-primary);
             margin: 0;
             font-weight: 700;
         }
-
+        .header-title .title-text p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--color-text-light);
+        }
         .main-container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: calc(var(--spacing-unit) * 2);
         }
-
-        /* --- 🎨 3. Distribución con Contenedores y Tarjetas --- */
         .card {
             background-color: var(--color-surface);
             border-radius: var(--border-radius);
@@ -97,26 +77,9 @@
             padding: calc(var(--spacing-unit) * 1.5);
             margin-bottom: calc(var(--spacing-unit) * 2);
         }
-        
-        .report-controls-card {
-            display: flex;
-            flex-direction: column;
-            gap: var(--spacing-unit);
-        }
-        
-        .report-date-section {
-            display: flex;
-            align-items: center;
-            gap: var(--spacing-unit);
-            flex-wrap: wrap;
-        }
-
-        .report-actions {
-            display: flex;
-            gap: calc(var(--spacing-unit) / 2);
-            flex-wrap: wrap;
-        }
-
+        .report-controls-card { display: flex; flex-direction: column; gap: var(--spacing-unit); }
+        .report-date-section { display: flex; align-items: center; gap: var(--spacing-unit); flex-wrap: wrap; }
+        .report-actions { display: flex; gap: calc(var(--spacing-unit) * 0.75); flex-wrap: wrap; }
         .info-banner {
             padding: var(--spacing-unit);
             background-color: #eaf1f8;
@@ -126,8 +89,6 @@
             font-size: 0.95rem;
             line-height: 1.5;
         }
-
-        /* --- 🎨 4. Botones Distintivos --- */
         .btn {
             font-family: var(--font-family);
             border: none;
@@ -136,54 +97,23 @@
             cursor: pointer;
             transition: background-color 0.2s ease, transform 0.2s ease;
             font-weight: 500;
-            font-size: 1rem;
+            font-size: 0.95rem;
             text-align: center;
+            white-space: nowrap;
         }
         .btn:hover { transform: translateY(-2px); }
         .btn:active { transform: translateY(0); }
-
-        .btn-primary {
-            background-color: var(--color-primary);
-            color: white;
-        }
+        .btn-primary { background-color: var(--color-primary); color: white; }
         .btn-primary:hover { background-color: var(--color-primary-dark); }
-        
-        .btn-accent {
-            background-color: var(--color-accent);
-            color: white;
-        }
+        .btn-accent { background-color: var(--color-accent); color: white; }
         .btn-accent:hover { background-color: var(--color-accent-dark); }
-
-        .btn-secondary {
-            background-color: #e9ecef;
-            color: var(--color-text);
-            border: 1px solid #ced4da;
-        }
+        .btn-secondary { background-color: #e9ecef; color: var(--color-text); border: 1px solid #ced4da; }
         .btn-secondary:hover { background-color: #dde1e4; }
-
-        .btn-danger {
-            background-color: var(--color-danger);
-            color: white;
-        }
+        .btn-danger { background-color: var(--color-danger); color: white; }
         .btn-danger:hover { background-color: var(--color-danger-dark); }
-        
-        .btn-full-width {
-            width: 100%;
-        }
-
-        /* --- Estilos de Formularios y Tareas --- */
-        label {
-            display: block;
-            margin-bottom: 0.5rem;
-            font-weight: 500;
-            color: var(--color-text);
-        }
-
-        input[type="text"],
-        input[type="date"],
-        input[type="number"],
-        textarea,
-        select {
+        .btn-full-width { width: 100%; }
+        label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--color-text); }
+        input[type="text"], input[type="date"], input[type="number"], textarea, select {
             width: 100%;
             padding: 0.75rem;
             margin-bottom: var(--spacing-unit);
@@ -193,145 +123,44 @@
             font-family: var(--font-family);
             transition: border-color 0.3s ease, box-shadow 0.3s ease;
         }
-
         input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: var(--color-primary);
             box-shadow: 0 0 0 3px rgba(10, 77, 140, 0.15);
         }
-        
-        .task-card {
-            border-left: 5px solid var(--color-primary);
-        }
-
-        .task-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-unit);
-            padding-bottom: var(--spacing-unit);
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .task-header h3 {
-            margin: 0;
-            font-size: 1.2rem;
-            font-weight: 700;
-            color: var(--color-primary);
-        }
-
+        .task-card { border-left: 5px solid var(--color-primary); }
+        .task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-unit); padding-bottom: var(--spacing-unit); border-bottom: 1px solid var(--border-color); }
+        .task-header h3 { margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--color-primary); }
         .task-body p { margin: 0 0 var(--spacing-unit); line-height: 1.6; }
-        .task-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: var(--spacing-unit);
-            color: var(--color-text-light);
-            font-size: 0.9rem;
-            flex-wrap: wrap;
-        }
-
-        progress {
-            width: 100%;
-            height: 10px;
-            border-radius: 5px;
-            overflow: hidden;
-            appearance: none;
-        }
+        .task-footer { display: flex; justify-content: space-between; align-items: center; gap: var(--spacing-unit); color: var(--color-text-light); font-size: 0.9rem; flex-wrap: wrap; }
+        progress { width: 100%; height: 10px; border-radius: 5px; overflow: hidden; appearance: none; }
         progress::-webkit-progress-bar { background-color: #e9ecef; }
         progress::-webkit-progress-value { background-color: var(--color-primary); }
-
-        /* --- 🧩 Componente: Modal --- */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 2000;
-            left: 0; top: 0;
-            width: 100%; height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.5);
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-content {
-            background-color: var(--color-surface);
-            margin: auto;
-            padding: calc(var(--spacing-unit) * 2);
-            border-radius: var(--border-radius);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            width: 90%;
-            max-width: 600px;
-            position: relative;
-        }
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-bottom: var(--spacing-unit);
-            border-bottom: 1px solid var(--border-color);
-            margin-bottom: calc(var(--spacing-unit) * 1.5);
-        }
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: var(--color-surface); margin: auto; padding: calc(var(--spacing-unit) * 2); border-radius: var(--border-radius); box-shadow: 0 10px 30px rgba(0,0,0,0.2); width: 90%; max-width: 600px; position: relative; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: var(--spacing-unit); border-bottom: 1px solid var(--border-color); margin-bottom: calc(var(--spacing-unit) * 1.5); }
         .modal-header h2 { margin: 0; font-size: 1.5rem; color: var(--color-primary); }
-        .close-button {
-            background: transparent;
-            border: none;
-            font-size: 2rem;
-            font-weight: bold;
-            cursor: pointer;
-            color: var(--color-text-light);
-        }
+        .close-button { background: transparent; border: none; font-size: 2rem; font-weight: bold; cursor: pointer; color: var(--color-text-light); }
         .close-button:hover { color: var(--color-text); }
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: var(--spacing-unit);
-        }
-
-        /* --- 🧑‍💻 2. UX: Indicadores Visuales (Toast) --- */
-        #toast-container {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 3000;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        .toast {
-            background-color: var(--color-text);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            opacity: 0;
-            transform: translateY(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-        .toast.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--spacing-unit); }
+        #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 3000; display: flex; flex-direction: column; gap: 10px; }
+        .toast { background-color: var(--color-text); color: white; padding: 1rem 1.5rem; border-radius: var(--border-radius); box-shadow: var(--shadow); opacity: 0; transform: translateY(20px); transition: opacity 0.3s ease, transform 0.3s ease; }
+        .toast.show { opacity: 1; transform: translateY(0); }
         .toast.success { background-color: #28a745; }
         .toast.error { background-color: var(--color-danger); }
-
-        /* --- Pie de página web --- */
-        .app-footer {
-            background-color: #e9ecef;
-            color: var(--color-text-light);
-            text-align: center;
-            padding: calc(var(--spacing-unit) * 1.5);
-            margin-top: calc(var(--spacing-unit) * 2);
-            font-size: 0.9rem;
+        .app-footer { background-color: #e9ecef; color: var(--color-text-light); text-align: center; padding: calc(var(--spacing-unit) * 1.5); margin-top: calc(var(--spacing-unit) * 2); font-size: 0.9rem; }
+        @media (max-width: 992px) {
+            .app-header { flex-direction: column; align-items: flex-start; gap: var(--spacing-unit); padding-bottom: 1.5rem;}
+            body { padding-top: 150px; }
+            .report-actions { width: 100%; justify-content: flex-start; }
+            .btn { flex-grow: 1; }
         }
-        
-        /* --- 🧑‍💻 4. UX: Responsividad Móvil --- */
-        @media (max-width: 768px) {
-            body { padding-top: 160px; /* Adjust for wrapped header */ }
-            .app-header { flex-direction: column; align-items: flex-start; gap: var(--spacing-unit); }
+        @media (max-width: 576px) {
+            .header-title { flex-direction: column; align-items: flex-start; }
+            .header-title .title-text { text-align: left; }
             .report-date-section { flex-direction: column; align-items: stretch; }
             .form-grid { grid-template-columns: 1fr; }
-            .btn { width: 100%; }
-            .report-actions { flex-direction: column; width: 100%;}
+            .report-actions { flex-direction: column; }
         }
     </style>
 </head>
@@ -340,12 +169,15 @@
     <header class="app-header">
         <div class="header-title">
             <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" alt="Logo Cumbres de Quilpué">
-            <h1>Comité Cumbres de Quilpué</h1>
+            <div class="title-text">
+                <h1>Plataforma de Informes</h1>
+                <p>Comité Cumbres de Quilpué</p>
+            </div>
         </div>
         <div class="report-actions">
             <button id="btn-save" class="btn btn-secondary">Guardar</button>
             <button id="btn-load-file" class="btn btn-secondary">Cargar</button>
-            <button id="btn-preview-pdf" class="btn btn-accent">Vista Previa PDF</button>
+            <button id="btn-preview-pdf" class="btn btn-accent">Vista Previa</button>
             <button id="btn-generate" class="btn btn-primary">Generar PDF</button>
         </div>
     </header>
@@ -353,10 +185,9 @@
     <main class="main-container">
         <div class="card report-controls-card">
             <div class="report-date-section">
-                <label for="report-date" style="margin-bottom:0;">Fecha del Informe:</label>
+                <label for="report-date" style="margin-bottom:0; font-weight:700;">Fecha de Emisión del Informe:</label>
                 <input type="date" id="report-date" style="margin-bottom:0;">
             </div>
-            <p id="info-banner" class="info-banner" aria-live="polite"></p>
         </div>
         
         <div id="tasks-container"></div>
@@ -365,7 +196,7 @@
     </main>
     
     <footer class="app-footer">
-        <p id="footer-text">&copy; 2024 Condominio Cumbres de Quilpué. Todos los derechos reservados.</p>
+        <p id="footer-text">&copy; 2025 Condominio Cumbres de Quilpué. Todos los derechos reservados.</p>
     </footer>
 
     <div id="task-modal" class="modal">
@@ -378,32 +209,17 @@
                 <input type="hidden" id="task-id">
                 <label for="task-name">Nombre de la tarea</label>
                 <input type="text" id="task-name" placeholder="Ej: Revisión de cámaras de seguridad" required>
-
                 <label for="task-desc">Descripción</label>
-                <textarea id="task-desc" rows="4" placeholder="Ej: Cotizar y coordinar la mantención de las 4 cámaras del condominio."></textarea>
-                
+                <textarea id="task-desc" rows="4" placeholder="Ej: Cotizar y coordinar la mantención de las cámaras del condominio."></textarea>
                 <div class="form-grid">
                     <div>
                         <label for="task-category">Categoría</label>
-                        <select id="task-category">
-                            <option>ADMINISTRATIVA</option>
-                            <option>OPERATIVA</option>
-                            <option>FINANCIERA</option>
-                            <option>SEGURIDAD</option>
-                            <option>COMUNICACIÓN</option>
-                            <option>SOCIAL</option>
-                            <option>OTROS</option>
-                        </select>
+                        <select id="task-category"></select>
                     </div>
-                    <div>
-                        <label for="task-deadline">Plazo</label>
-                        <input type="date" id="task-deadline">
-                    </div>
+                    <div><label for="task-deadline">Plazo</label><input type="date" id="task-deadline"></div>
                 </div>
-
                 <label for="task-progress">Porcentaje de avance (%)</label>
                 <input type="number" id="task-progress" min="0" max="100" value="0" required>
-                
                 <button type="submit" class="btn btn-primary btn-full-width">Guardar Tarea</button>
             </form>
         </div>
@@ -424,9 +240,8 @@
 
     <script>
     document.addEventListener('DOMContentLoaded', () => {
-        // --- SELECTORES DE ELEMENTOS ---
+        const CATEGORIES = ['ADMINISTRATIVA', 'FINANCIERA', 'SEGURIDAD', 'OPERATIVA', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
         const reportDateInput = document.getElementById('report-date');
-        const infoBanner = document.getElementById('info-banner');
         const tasksContainer = document.getElementById('tasks-container');
         const btnAddTask = document.getElementById('btn-add-task');
         const btnSave = document.getElementById('btn-save');
@@ -434,27 +249,26 @@
         const btnGenerate = document.getElementById('btn-generate');
         const btnPreviewPDF = document.getElementById('btn-preview-pdf');
         const fileInput = document.getElementById('file-input');
-        
-        // Modal de Tarea
         const taskModal = document.getElementById('task-modal');
         const taskForm = document.getElementById('task-form');
         const modalTitle = document.getElementById('modal-title');
         const closeButtons = document.querySelectorAll('.close-button');
-        
-        // Modal de Vista Previa
         const pdfPreviewModal = document.getElementById('pdf-preview-modal');
         const pdfPreviewContent = document.getElementById('pdf-preview-content');
+        const categorySelect = document.getElementById('task-category');
 
         let tasks = [];
+
+        function populateCategorySelect() {
+            categorySelect.innerHTML = CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        }
         
-        // --- 🧑‍💻 2. UX: Indicadores Visuales (Toast) ---
         function showToast(message, type = 'success') {
             const toastContainer = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
             toast.textContent = message;
             toastContainer.appendChild(toast);
-            
             setTimeout(() => { toast.classList.add('show'); }, 10);
             setTimeout(() => {
                 toast.classList.remove('show');
@@ -462,24 +276,16 @@
             }, 3000);
         }
         
-        // --- LÓGICA DE LA APLICACIÓN ---
         function formatInformeDate(dateStr) {
             if (!dateStr) return '';
-            const date = new Date(dateStr + 'T00:00:00-04:00'); // Asumir zona horaria local
+            const date = new Date(dateStr + 'T00:00:00-04:00');
             return date.toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' });
-        }
-
-        function updateInfoBanner() {
-            const formattedDate = formatInformeDate(reportDateInput.value);
-            infoBanner.textContent = formattedDate
-                ? `Informe de tareas al ${formattedDate}.`
-                : 'Por favor, seleccione la fecha del informe.';
         }
 
         function renderTasks() {
             tasksContainer.innerHTML = '';
             if (tasks.length === 0) {
-                tasksContainer.innerHTML = '<p style="text-align:center; color: var(--color-text-light);">No hay tareas. ¡Agrega una para comenzar!</p>';
+                tasksContainer.innerHTML = `<div class="card" style="text-align:center; color: var(--color-text-light);">No hay tareas. ¡Agrega una para comenzar!</div>`;
                 return;
             }
             tasks.forEach((task, index) => {
@@ -488,7 +294,7 @@
                 taskCard.innerHTML = `
                     <div class="task-header">
                         <h3>${task.name}</h3>
-                        <div>
+                        <div class="report-actions">
                             <button class="btn btn-secondary btn-sm" data-edit-id="${index}" style="padding: 0.5em 1em;">Editar</button>
                             <button class="btn btn-danger btn-sm" data-delete-id="${index}" style="padding: 0.5em 1em;">Eliminar</button>
                         </div>
@@ -507,9 +313,9 @@
             });
         }
         
-        // --- 🧩 GESTIÓN DEL MODAL DE TAREAS ---
         function openTaskModal(task = null, index = -1) {
             taskForm.reset();
+            document.getElementById('task-category').value = CATEGORIES[0];
             if (task) {
                 modalTitle.textContent = 'Editar Tarea';
                 document.getElementById('task-id').value = index;
@@ -535,38 +341,36 @@
             const taskData = {
                 name: document.getElementById('task-name').value.trim(),
                 description: document.getElementById('task-desc').value.trim(),
-                category: document.getElementById('task-category').value,
+                category: categorySelect.value,
                 deadline: document.getElementById('task-deadline').value,
                 progress: parseInt(document.getElementById('task-progress').value, 10),
             };
-
             const taskId = parseInt(document.getElementById('task-id').value, 10);
-            if (taskId > -1) {
-                tasks[taskId] = taskData;
-            } else {
-                tasks.push(taskData);
-            }
+            if (taskId > -1) tasks[taskId] = taskData;
+            else tasks.push(taskData);
             renderTasks();
             closeModals();
         });
 
-        // --- GESTIÓN DE DATOS (GUARDAR/CARGAR) ---
         function gatherData() {
+            const sortedTasks = [...tasks].sort((a, b) => {
+                return CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category);
+            });
             return {
                 reportDate: reportDateInput.value,
-                tasks: tasks
+                tasks: sortedTasks
             };
         }
 
         function loadData(data) {
             reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
             tasks = data.tasks || [];
-            updateInfoBanner();
             renderTasks();
         }
 
         btnSave.addEventListener('click', () => {
-            const data = JSON.stringify(gatherData());
+            const dataToSave = { reportDate: reportDateInput.value, tasks: tasks };
+            const data = JSON.stringify(dataToSave);
             const blob = new Blob([data], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -587,62 +391,50 @@
                     const data = JSON.parse(event.target.result);
                     loadData(data);
                     showToast('Archivo cargado con éxito.');
-                } catch (err) {
-                    showToast('El archivo no es válido.', 'error');
-                }
+                } catch (err) { showToast('El archivo no es válido.', 'error'); }
             };
             reader.readAsText(file);
             fileInput.value = '';
         });
 
-        // --- 📄 LÓGICA DE GENERACIÓN DE PDF ---
         function createPdfHtml(data) {
             const logoHtml = `<img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" style="height: 60px; width: auto;" alt="Logo Cumbres de Quilpué">`;
-            
-            let html = `
-                <div style="font-family: 'Inter', sans-serif; color: #333; padding: 40px; width: 780px; background: white;">
-                    <header style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0a4d8c; padding-bottom: 20px; margin-bottom: 20px;">
-                        ${logoHtml}
-                        <div style="text-align: right;">
-                            <h1 style="font-size: 24px; color: #0a4d8c; margin: 0 0 10px 0;">Informe de Tareas</h1>
-                            <p style="margin: 0; font-size: 14px;"><strong>Condominio Cumbres de Quilpué</strong></p>
-                        </div>
-                    </header>
-                    <main>
-                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6;">
-                            <p style="margin: 0;"><strong>Para:</strong> Administración y Staff de Condominio Cumbres de Quilpué</p>
-                            <p style="margin: 5px 0;"><strong>De:</strong> Comité Cumbres de Quilpué</p>
-                            <p style="margin: 5px 0;"><strong>Fecha:</strong> ${formatInformeDate(data.reportDate)}</p>
-                            <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área y destacando aquellas que requieren atención especial para la Administración y el Staff del condominio.</p>
-                        </div>
-
-                        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                            <thead>
-                                <tr>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Tarea</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Descripción</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Categoría</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Plazo</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Avance</th>
-                                </tr>
-                            </thead>
-                            <tbody>`;
+            let lastCategory = null;
+            let html = `<div style="font-family: 'Inter', sans-serif; color: #333; padding: 40px; width: 780px; background: white;">
+                <header style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0a4d8c; padding-bottom: 20px; margin-bottom: 20px;">
+                    ${logoHtml}
+                    <div style="text-align: right;"><h1 style="font-size: 24px; color: #0a4d8c; margin: 0 0 10px 0;">Informe de Tareas</h1><p style="margin: 0; font-size: 14px;"><strong>Condominio Cumbres de Quilpué</strong></p></div>
+                </header>
+                <main>
+                    <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6;">
+                        <p style="margin: 0;"><strong>Para:</strong> Administración y Staff de Condominio Cumbres de Quilpué</p>
+                        <p style="margin: 5px 0;"><strong>De:</strong> Comité Cumbres de Quilpué</p>
+                        <p style="margin: 5px 0;"><strong>Fecha:</strong> ${formatInformeDate(data.reportDate)}</p>
+                        <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área y destacando aquellas que requieren atención especial.</p>
+                    </div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                            <tr>
+                                <th style="width: 25%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Tarea</th>
+                                <th style="width: 40%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Descripción</th>
+                                <th style="width: 15%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Plazo</th>
+                                <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Avance</th>
+                            </tr>
+                        </thead><tbody>`;
             data.tasks.forEach(task => {
-                html += `
-                    <tr style="border-bottom: 1px solid #eee;">
+                if(task.category !== lastCategory) {
+                    html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: 700; font-size: 14px; color: #0a4d8c; border-bottom: 1px solid #0a4d8c;">Categoría: ${task.category}</td></tr>`;
+                    lastCategory = task.category;
+                }
+                html += `<tr style="border-bottom: 1px solid #eee;">
                         <td style="padding: 10px; vertical-align: top;">${task.name}</td>
-                        <td style="padding: 10px; vertical-align: top; max-width: 250px;">${task.description || '-'}</td>
-                        <td style="padding: 10px; vertical-align: top;">${task.category}</td>
+                        <td style="padding: 10px; vertical-align: top;">${task.description || '-'}</td>
                         <td style="padding: 10px; vertical-align: top;">${task.deadline ? formatInformeDate(task.deadline) : '-'}</td>
                         <td style="padding: 10px; vertical-align: middle;">
                             <div style="display: flex; align-items: center; gap: 5px;">
-                                <div style="flex-grow: 1; background-color: #e9ecef; border-radius: 5px; height: 10px;">
-                                    <div style="width: ${task.progress}%; background-color: #0a4d8c; height: 10px; border-radius: 5px;"></div>
-                                </div>
+                                <div style="flex-grow: 1; background-color: #e9ecef; border-radius: 5px; height: 10px;"><div style="width: ${task.progress}%; background-color: #0a4d8c; height: 10px; border-radius: 5px;"></div></div>
                                 <span style="font-size: 11px; font-weight: 500;">${task.progress}%</span>
-                            </div>
-                        </td>
-                    </tr>`;
+                            </div></td></tr>`;
             });
             html += `</tbody></table></main></div>`;
             return html;
@@ -654,53 +446,46 @@
                 showToast('Debe seleccionar una fecha y agregar al menos una tarea.', 'error');
                 return;
             }
-            
             const pdfContainer = document.createElement('div');
+            pdfContainer.style.position = 'absolute';
+            pdfContainer.style.left = '-9999px';
             pdfContainer.innerHTML = createPdfHtml(data);
             document.body.appendChild(pdfContainer);
 
             try {
-                const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 2, useCORS: true });
-                const imgData = canvas.toDataURL('image/png');
                 const { jsPDF } = window.jspdf;
                 const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
-                
+                const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 2, useCORS: true });
+                const imgData = canvas.toDataURL('image/png');
+
                 const pageWidth = pdf.internal.pageSize.getWidth();
                 const pageHeight = pdf.internal.pageSize.getHeight();
                 const margin = 40;
-                
                 const imgProps = pdf.getImageProperties(imgData);
                 const pdfWidth = pageWidth - (margin * 2);
                 const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-                
-                const totalPages = Math.ceil(pdfHeight / (pageHeight - margin * 2));
                 let heightLeft = pdfHeight;
                 let position = 0;
 
                 pdf.addImage(imgData, 'PNG', margin, position + margin, pdfWidth, pdfHeight);
-                heightLeft -= pageHeight - margin * 2;
+                heightLeft -= (pageHeight - margin * 2);
 
                 while (heightLeft > 0) {
-                    position = heightLeft - pdfHeight;
+                    position -= (pageHeight - margin * 2);
                     pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', margin, position + margin, pdfWidth, pdfHeight);
-                    heightLeft -= pageHeight - margin * 2;
+                    pdf.addImage(imgData, 'PNG', margin, position, pdfWidth, pdfHeight);
+                    heightLeft -= (pageHeight - margin * 2);
                 }
 
-                // Añadir pie de página con número y texto de confidencialidad
-                for (let i = 1; i <= pdf.internal.getNumberOfPages(); i++) {
+                const pageCount = pdf.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
                     pdf.setPage(i);
-                    pdf.setFontSize(9);
+                    pdf.setFontSize(8);
                     pdf.setTextColor('#666');
-                    
-                    const footerText = "Este informe y su contenido son de uso exclusivo para la Administración del Condominio Cumbres de Quilpué.";
-                    pdf.text(footerText, margin, pageHeight - margin + 10, { align: 'left' });
-                    
-                    const signatureText = "Comité Cumbres de Quilpué";
-                    pdf.text(signatureText, pageWidth / 2, pageHeight - margin + 10, { align: 'center' });
-
-                    const pageNumText = `Página ${i} de ${pdf.internal.getNumberOfPages()}`;
-                    pdf.text(pageNumText, pageWidth - margin, pageHeight - margin + 10, { align: 'right' });
+                    const footerY = pageHeight - margin + 15;
+                    pdf.text("Este informe y su contenido son de uso exclusivo para la Administración.", margin, footerY);
+                    pdf.text("Comité Cumbres de Quilpué", pageWidth / 2, footerY, { align: 'center' });
+                    pdf.text(`Página ${i} de ${pageCount}`, pageWidth - margin, footerY, { align: 'right' });
                 }
 
                 pdf.save(`Informe_Tareas_${data.reportDate}.pdf`);
@@ -714,23 +499,16 @@
         }
 
         // --- EVENT LISTENERS ---
-        reportDateInput.addEventListener('change', updateInfoBanner);
+        reportDateInput.addEventListener('change', () => {});
         btnAddTask.addEventListener('click', () => openTaskModal());
         closeButtons.forEach(btn => btn.addEventListener('click', closeModals));
-        window.addEventListener('click', (e) => {
-             if (e.target === taskModal || e.target === pdfPreviewModal) closeModals();
-        });
-        
+        window.addEventListener('click', (e) => { if (e.target === taskModal || e.target === pdfPreviewModal) closeModals(); });
         tasksContainer.addEventListener('click', (e) => {
             const editButton = e.target.closest('[data-edit-id]');
-            if (editButton) {
-                const index = parseInt(editButton.getAttribute('data-edit-id'), 10);
-                openTaskModal(tasks[index], index);
-            }
-            
+            if (editButton) openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
             const deleteButton = e.target.closest('[data-delete-id]');
             if (deleteButton) {
-                const index = parseInt(deleteButton.getAttribute('data-delete-id'), 10);
+                const index = parseInt(deleteButton.dataset.deleteId, 10);
                 if (confirm(`¿Estás seguro de que quieres eliminar la tarea "${tasks[index].name}"?`)) {
                     tasks.splice(index, 1);
                     renderTasks();
@@ -738,21 +516,20 @@
                 }
             }
         });
-        
         btnPreviewPDF.addEventListener('click', () => {
             const data = gatherData();
             if (!data.reportDate || data.tasks.length === 0) {
-                showToast('Debe seleccionar una fecha y agregar al menos una tarea para la vista previa.', 'error');
+                showToast('Debe seleccionar fecha y agregar tareas para la vista previa.', 'error');
                 return;
             }
             pdfPreviewContent.innerHTML = createPdfHtml(data);
             pdfPreviewModal.style.display = 'flex';
         });
-
         btnGenerate.addEventListener('click', generatePDF);
 
-        // --- INICIALIZACIÓN ---
+        // --- INITIALIZATION ---
         document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
+        populateCategorySelect();
         loadData({ reportDate: new Date().toISOString().split('T')[0] });
     });
     </script>
