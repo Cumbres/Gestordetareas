@@ -40,13 +40,20 @@
             padding-top: 100px; /* Space for fixed header */
             color: var(--color-text);
             font-size: 16px;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        
+        main {
+            flex-grow: 1;
         }
 
         /* --- 🧑‍💻 1. UX: Barra de Navegación Fija --- */
         .app-header {
             background-color: var(--color-surface);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
+            padding: calc(var(--spacing-unit)) calc(var(--spacing-unit) * 2);
             position: fixed;
             top: 0;
             left: 0;
@@ -57,8 +64,19 @@
             align-items: center;
             flex-wrap: wrap;
         }
+        
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
 
-        .app-header h1 {
+        .header-title img {
+            height: 50px;
+            width: auto;
+        }
+
+        .header-title h1 {
             font-size: 1.5rem;
             color: var(--color-primary);
             margin: 0;
@@ -251,7 +269,7 @@
             align-items: center;
             padding-bottom: var(--spacing-unit);
             border-bottom: 1px solid var(--border-color);
-            margin-bottom: var(--spacing-unit) * 1.5;
+            margin-bottom: calc(var(--spacing-unit) * 1.5);
         }
         .modal-header h2 { margin: 0; font-size: 1.5rem; color: var(--color-primary); }
         .close-button {
@@ -295,6 +313,16 @@
         }
         .toast.success { background-color: #28a745; }
         .toast.error { background-color: var(--color-danger); }
+
+        /* --- Pie de página web --- */
+        .app-footer {
+            background-color: #e9ecef;
+            color: var(--color-text-light);
+            text-align: center;
+            padding: calc(var(--spacing-unit) * 1.5);
+            margin-top: calc(var(--spacing-unit) * 2);
+            font-size: 0.9rem;
+        }
         
         /* --- 🧑‍💻 4. UX: Responsividad Móvil --- */
         @media (max-width: 768px) {
@@ -310,7 +338,10 @@
 <body>
 
     <header class="app-header">
-        <h1>Comité Cumbres de Quilpué</h1>
+        <div class="header-title">
+            <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" alt="Logo Cumbres de Quilpué">
+            <h1>Comité Cumbres de Quilpué</h1>
+        </div>
         <div class="report-actions">
             <button id="btn-save" class="btn btn-secondary">Guardar</button>
             <button id="btn-load-file" class="btn btn-secondary">Cargar</button>
@@ -333,6 +364,10 @@
         <button id="btn-add-task" class="btn btn-accent btn-full-width">+ Agregar Nueva Tarea</button>
     </main>
     
+    <footer class="app-footer">
+        <p id="footer-text">&copy; 2024 Condominio Cumbres de Quilpué. Todos los derechos reservados.</p>
+    </footer>
+
     <div id="task-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -420,10 +455,7 @@
             toast.textContent = message;
             toastContainer.appendChild(toast);
             
-            setTimeout(() => {
-                toast.classList.add('show');
-            }, 10);
-            
+            setTimeout(() => { toast.classList.add('show'); }, 10);
             setTimeout(() => {
                 toast.classList.remove('show');
                 setTimeout(() => toast.remove(), 500);
@@ -457,8 +489,8 @@
                     <div class="task-header">
                         <h3>${task.name}</h3>
                         <div>
-                            <button class="btn btn-secondary btn-sm" data-edit-id="${index}">Editar</button>
-                            <button class="btn btn-danger btn-sm" data-delete-id="${index}">Eliminar</button>
+                            <button class="btn btn-secondary btn-sm" data-edit-id="${index}" style="padding: 0.5em 1em;">Editar</button>
+                            <button class="btn btn-danger btn-sm" data-delete-id="${index}" style="padding: 0.5em 1em;">Eliminar</button>
                         </div>
                     </div>
                     <div class="task-body">
@@ -510,9 +542,9 @@
 
             const taskId = parseInt(document.getElementById('task-id').value, 10);
             if (taskId > -1) {
-                tasks[taskId] = taskData; // Update
+                tasks[taskId] = taskData;
             } else {
-                tasks.push(taskData); // Create
+                tasks.push(taskData);
             }
             renderTasks();
             closeModals();
@@ -565,33 +597,36 @@
 
         // --- 📄 LÓGICA DE GENERACIÓN DE PDF ---
         function createPdfHtml(data) {
-             const logoSvg = `<svg width="50" height="50" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle; margin-right: 15px;"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5-10-5-10 5z" stroke="${getComputedStyle(document.documentElement).getPropertyValue('--color-primary')}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
-
+            const logoHtml = `<img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" style="height: 60px; width: auto;" alt="Logo Cumbres de Quilpué">`;
+            
             let html = `
                 <div style="font-family: 'Inter', sans-serif; color: #333; padding: 40px; width: 780px; background: white;">
-                    <header style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--color-primary); padding-bottom: 20px; margin-bottom: 30px;">
-                        <div style="display: flex; align-items: center;">
-                            ${logoSvg}
-                            <h1 style="font-size: 24px; color: var(--color-primary); margin: 0;">Informe de Tareas</h1>
-                        </div>
+                    <header style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0a4d8c; padding-bottom: 20px; margin-bottom: 20px;">
+                        ${logoHtml}
                         <div style="text-align: right;">
-                            <p style="margin: 0; font-size: 14px;"><strong>Comité Cumbres de Quilpué</strong></p>
-                            <p style="margin: 0; font-size: 14px;">Fecha: ${formatInformeDate(data.reportDate)}</p>
+                            <h1 style="font-size: 24px; color: #0a4d8c; margin: 0 0 10px 0;">Informe de Tareas</h1>
+                            <p style="margin: 0; font-size: 14px;"><strong>Condominio Cumbres de Quilpué</strong></p>
                         </div>
                     </header>
                     <main>
+                        <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6;">
+                            <p style="margin: 0;"><strong>Para:</strong> Administración y Staff de Condominio Cumbres de Quilpué</p>
+                            <p style="margin: 5px 0;"><strong>De:</strong> Comité Cumbres de Quilpué</p>
+                            <p style="margin: 5px 0;"><strong>Fecha:</strong> ${formatInformeDate(data.reportDate)}</p>
+                            <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área y destacando aquellas que requieren atención especial para la Administración y el Staff del condominio.</p>
+                        </div>
+
                         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
                             <thead>
                                 <tr>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: var(--color-primary);">Tarea</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: var(--color-primary);">Descripción</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: var(--color-primary);">Categoría</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: var(--color-primary);">Plazo</th>
-                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: var(--color-primary);">Avance</th>
+                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Tarea</th>
+                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Descripción</th>
+                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Categoría</th>
+                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Plazo</th>
+                                    <th style="text-align: left; padding: 10px; border-bottom: 2px solid #ccc; color: #0a4d8c;">Avance</th>
                                 </tr>
                             </thead>
-                            <tbody>
-            `;
+                            <tbody>`;
             data.tasks.forEach(task => {
                 html += `
                     <tr style="border-bottom: 1px solid #eee;">
@@ -600,13 +635,14 @@
                         <td style="padding: 10px; vertical-align: top;">${task.category}</td>
                         <td style="padding: 10px; vertical-align: top;">${task.deadline ? formatInformeDate(task.deadline) : '-'}</td>
                         <td style="padding: 10px; vertical-align: middle;">
-                            <div style="width: 100%; background-color: #e9ecef; border-radius: 5px; height: 10px;">
-                                <div style="width: ${task.progress}%; background-color: var(--color-primary); height: 10px; border-radius: 5px;"></div>
+                            <div style="display: flex; align-items: center; gap: 5px;">
+                                <div style="flex-grow: 1; background-color: #e9ecef; border-radius: 5px; height: 10px;">
+                                    <div style="width: ${task.progress}%; background-color: #0a4d8c; height: 10px; border-radius: 5px;"></div>
+                                </div>
+                                <span style="font-size: 11px; font-weight: 500;">${task.progress}%</span>
                             </div>
-                            <span style="font-size: 11px;">${task.progress}%</span>
                         </td>
-                    </tr>
-                `;
+                    </tr>`;
             });
             html += `</tbody></table></main></div>`;
             return html;
@@ -637,20 +673,34 @@
                 const pdfWidth = pageWidth - (margin * 2);
                 const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
                 
-                pdf.addImage(imgData, 'PNG', margin, margin, pdfWidth, pdfHeight);
-                
-                // Añadir pie de página con número
-                const pageCount = pdf.internal.getNumberOfPages();
-                for (let i = 1; i <= pageCount; i++) {
+                const totalPages = Math.ceil(pdfHeight / (pageHeight - margin * 2));
+                let heightLeft = pdfHeight;
+                let position = 0;
+
+                pdf.addImage(imgData, 'PNG', margin, position + margin, pdfWidth, pdfHeight);
+                heightLeft -= pageHeight - margin * 2;
+
+                while (heightLeft > 0) {
+                    position = heightLeft - pdfHeight;
+                    pdf.addPage();
+                    pdf.addImage(imgData, 'PNG', margin, position + margin, pdfWidth, pdfHeight);
+                    heightLeft -= pageHeight - margin * 2;
+                }
+
+                // Añadir pie de página con número y texto de confidencialidad
+                for (let i = 1; i <= pdf.internal.getNumberOfPages(); i++) {
                     pdf.setPage(i);
-                    pdf.setFontSize(10);
-                    pdf.setTextColor(150);
-                    pdf.text(
-                        `Página ${i} de ${pageCount}`,
-                        pageWidth / 2,
-                        pageHeight - margin/2,
-                        { align: 'center' }
-                    );
+                    pdf.setFontSize(9);
+                    pdf.setTextColor('#666');
+                    
+                    const footerText = "Este informe y su contenido son de uso exclusivo para la Administración del Condominio Cumbres de Quilpué.";
+                    pdf.text(footerText, margin, pageHeight - margin + 10, { align: 'left' });
+                    
+                    const signatureText = "Comité Cumbres de Quilpué";
+                    pdf.text(signatureText, pageWidth / 2, pageHeight - margin + 10, { align: 'center' });
+
+                    const pageNumText = `Página ${i} de ${pdf.internal.getNumberOfPages()}`;
+                    pdf.text(pageNumText, pageWidth - margin, pageHeight - margin + 10, { align: 'right' });
                 }
 
                 pdf.save(`Informe_Tareas_${data.reportDate}.pdf`);
@@ -672,12 +722,15 @@
         });
         
         tasksContainer.addEventListener('click', (e) => {
-            if (e.target.matches('[data-edit-id]')) {
-                const index = parseInt(e.target.getAttribute('data-edit-id'), 10);
+            const editButton = e.target.closest('[data-edit-id]');
+            if (editButton) {
+                const index = parseInt(editButton.getAttribute('data-edit-id'), 10);
                 openTaskModal(tasks[index], index);
             }
-            if (e.target.matches('[data-delete-id]')) {
-                const index = parseInt(e.target.getAttribute('data-delete-id'), 10);
+            
+            const deleteButton = e.target.closest('[data-delete-id]');
+            if (deleteButton) {
+                const index = parseInt(deleteButton.getAttribute('data-delete-id'), 10);
                 if (confirm(`¿Estás seguro de que quieres eliminar la tarea "${tasks[index].name}"?`)) {
                     tasks.splice(index, 1);
                     renderTasks();
@@ -692,15 +745,14 @@
                 showToast('Debe seleccionar una fecha y agregar al menos una tarea para la vista previa.', 'error');
                 return;
             }
-            // Inyectamos el CSS de las variables para que la preview se vea bien
-            const style = `<style>:root {--color-primary: #0a4d8c;}</style>`;
-            pdfPreviewContent.innerHTML = style + createPdfHtml(data);
+            pdfPreviewContent.innerHTML = createPdfHtml(data);
             pdfPreviewModal.style.display = 'flex';
         });
 
         btnGenerate.addEventListener('click', generatePDF);
 
         // --- INICIALIZACIÓN ---
+        document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
         loadData({ reportDate: new Date().toISOString().split('T')[0] });
     });
     </script>
