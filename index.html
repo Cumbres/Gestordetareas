@@ -93,8 +93,7 @@
                     <span>Acciones</span>
                 </button>
                 <div id="actions-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl z-50 border border-slate-200">
-                    <a href="#" id="btn-save" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 rounded-t-lg">💾 Guardar Borrador</a>
-                    <a href="#" id="btn-load-file" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">📂 Cargar Archivo</a>
+                    <a href="#" id="btn-save" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 rounded-t-lg">💾 Guardar Copia Local</a>
                     <a href="#" id="btn-preview-pdf" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">📄 Vista Previa PDF</a>
                     <a href="#" id="btn-generate" class="block px-4 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-b-lg">🚀 Generar PDF</a>
                 </div>
@@ -199,10 +198,15 @@
         </div>
     </div>
 
-    <input type="file" id="file-input" class="hidden" accept="application/json">
     <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
-    <script>
+    <script type="module">
+    // Importa la instancia de Firestore desde tu archivo de configuración de Firebase
+    import { db } from './firebase-config.js'; 
+
+    // Importa las funciones de Firestore que usarás
+    import { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
+
     document.addEventListener('DOMContentLoaded', () => {
         const CATEGORIES = ['ADMINISTRATIVA', 'FINANCIERA', 'SEGURIDAD', 'OPERATIVA', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
         
@@ -215,12 +219,12 @@
         const actionsMenuContainer = document.getElementById('actions-menu-container');
         const actionsMenuButton = document.getElementById('actions-menu-button');
         const actionsDropdown = document.getElementById('actions-dropdown');
-        const btnSave = document.getElementById('btn-save');
-        const btnLoadFile = document.getElementById('btn-load-file');
+        const btnSave = document.getElementById('btn-save'); 
+        // const btnLoadFile = document.getElementById('btn-load-file'); // Este botón ya no existe en el HTML
         const btnGenerate = document.getElementById('btn-generate');
         const btnPreviewPDF = document.getElementById('btn-preview-pdf');
         
-        const fileInput = document.getElementById('file-input');
+        // const fileInput = document.getElementById('file-input'); // Este input ya no existe en el HTML
         const taskModal = document.getElementById('task-modal');
         const taskForm = document.getElementById('task-form');
         const modalTitle = document.getElementById('modal-title');
@@ -243,34 +247,25 @@
         const filterStatusSelect = document.getElementById('filter-status');
         const searchTasksInput = document.getElementById('search-tasks');
 
-        let tasks = []; // Global task array
+        let tasks = []; // Global task array - ¡Ahora se llenará desde Firestore!
 
-        // --- Local Storage ---
-        function saveStateToLocalStorage() {
-            const state = {
-                reportDate: reportDateInput.value,
-                tasks: tasks
-            };
-            localStorage.setItem('taskReportState', JSON.stringify(state));
-        }
+        // --- Firebase Integration ---
+        function loadTasksFromFirestore() {
+            // Escuchar cambios en la colección 'tasks'
+            // También ordenamos por categoría para mantener la coherencia con el PDF
+            const q = query(collection(db, "tasks"), orderBy("category"), orderBy("name")); 
 
-        function loadStateFromLocalStorage() {
-            const savedState = localStorage.getItem('taskReportState');
-            if (savedState) {
-                const state = JSON.parse(savedState);
-                // Ensure default values for new properties if loading old data
-                tasks = (state.tasks || []).map(task => ({
-                    name: task.name || '',
-                    description: task.description || '',
-                    category: task.category || CATEGORIES[0],
-                    deadline: task.deadline || '',
-                    progress: task.progress !== undefined ? task.progress : 0
+            onSnapshot(q, (snapshot) => {
+                tasks = snapshot.docs.map(doc => ({
+                    id: doc.id, // ¡Importante! Guardamos el ID de Firestore
+                    ...doc.data()
                 }));
-                reportDateInput.value = state.reportDate || new Date().toISOString().split('T')[0];
-                renderTasks(); // Render all tasks initially after loading
-                return true;
-            }
-            return false;
+                console.log("Tareas cargadas/actualizadas desde Firestore:", tasks);
+                renderTasks(); // Renderizar las tareas cada vez que haya un cambio
+            }, (error) => {
+                console.error("Error al escuchar tareas desde Firestore:", error);
+                showToast('Error al cargar tareas desde la nube.', 'error');
+            });
         }
 
         // --- UI Functions ---
@@ -291,22 +286,20 @@
             }, 10);
             setTimeout(() => {
                 toast.classList.add('opacity-0');
-                setTimeout(() => toast.remove(), 500);
+                setTimeout(() => toast.remove(), 3000);
             }, 3000);
         }
         
         function formatInformeDate(dateStr) {
             if (!dateStr) return '';
             const date = new Date(dateStr + 'T00:00:00'); // Ensure date is treated as local date
-            // Using 'es-CL' for Chile's locale, which typically uses "dd de MMMM de YYYY"
             return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
         }
 
-        // Determines the status of a task and calculates days overdue
         function getTaskStatus(task) {
             const reportDateVal = reportDateInput.value;
             const today = reportDateVal ? new Date(reportDateVal + 'T00:00:00') : new Date();
-            today.setHours(0,0,0,0); // Normalize to start of day
+            today.setHours(0,0,0,0); 
 
             const deadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
 
@@ -316,13 +309,13 @@
             if (deadlineDate && deadlineDate < today) {
                 const diffTime = Math.abs(today.getTime() - deadlineDate.getTime());
                 daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return { status: 'overdue', daysOverdue: daysOverdue }; // Overdue if past deadline and not completed
+                return { status: 'overdue', daysOverdue: daysOverdue };
             }
             
             if (task.progress === 0) return { status: 'not-started', daysOverdue: 0 };
             if (task.progress > 0 && task.progress < 100) return { status: 'in-progress', daysOverdue: 0 };
             
-            return { status: 'not-started', daysOverdue: 0 }; // Default case, should ideally not be hit
+            return { status: 'not-started', daysOverdue: 0 };
         }
 
         function getStatusColorClass(status) {
@@ -350,7 +343,7 @@
             totalTasksCount.textContent = total;
             completedTasksCount.textContent = completed;
             inProgressTasksCount.textContent = inProgress;
-            overdueTasksCount.textContent = overdue + notStarted; // Combine not-started and overdue for display
+            overdueTasksCount.textContent = overdue + notStarted;
         }
         
         function renderTasks() {
@@ -373,13 +366,11 @@
 
             if (filteredTasks.length === 0) {
                 tasksContainer.innerHTML = `<div class="bg-white rounded-lg p-8 text-center text-slate-500">No hay tareas que coincidan con los filtros aplicados.</div>`;
-                updateTaskStatistics(); // Still update counts based on ALL tasks
+                updateTaskStatistics();
                 return;
             }
 
             filteredTasks.forEach((task) => {
-                // Find the original index in the 'tasks' array, not the filtered index
-                const originalIndex = tasks.indexOf(task); 
                 const { status: taskStatus, daysOverdue } = getTaskStatus(task);
                 const cardBorder = taskStatus === 'overdue' ? 'border-red-500' : 'border-blue-600';
                 const progressColorClass = getStatusColorClass(taskStatus);
@@ -400,13 +391,13 @@
                     <div class="flex justify-between items-start mb-2">
                         <h3 class="text-lg font-bold text-slate-800">${task.name}</h3>
                         <div class="flex-shrink-0 flex gap-2">
-                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${originalIndex}">Editar</button>
-                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${originalIndex}">Eliminar</button>
+                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${task.id}">Editar</button>
+                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${task.id}">Eliminar</button>
                         </div>
                     </div>
                     <p class="text-slate-600 mb-4">${task.description || '<i>Sin descripción.</i>'}</p>
                     <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
-                        <div class="h-2.5 rounded-full ${progressColorClass}" style="width: ${taskStatus === 'completed' ? '100%' : (taskStatus === 'not-started' ? '0%' : '50%')}"></div>
+                        <div class="h-2.5 rounded-full ${progressColorClass}" style="width: ${task.progress || 0}%"></div>
                     </div>
                     <div class="flex justify-between items-center text-sm text-slate-500">
                         <span><strong>Categoría:</strong> ${task.category}</span>
@@ -420,40 +411,63 @@
                 tasksContainer.appendChild(taskCard);
             });
             updateTaskStatistics();
-            saveStateToLocalStorage();
         }
         
         function openModal(modal) { modal.classList.remove('hidden'); }
         function closeModal(modal) { modal.classList.add('hidden'); }
 
-        function openTaskModal(task = null, index = -1) {
+        function openTaskModal(task = null) { 
             taskForm.reset();
             populateCategorySelects();
-            // Set default date for new tasks to today
             document.getElementById('task-deadline').value = new Date().toISOString().split('T')[0];
 
             if (task) {
                 modalTitle.textContent = 'Editar Tarea';
-                document.getElementById('task-id').value = index;
+                document.getElementById('task-id').value = task.id; 
                 document.getElementById('task-name').value = task.name;
                 document.getElementById('task-desc').value = task.description;
                 categorySelect.value = task.category;
                 document.getElementById('task-deadline').value = task.deadline;
-                taskProgressInput.value = task.progress; // Set slider value
+                taskProgressInput.value = task.progress;
             } else {
                 modalTitle.textContent = 'Agregar Tarea';
-                document.getElementById('task-id').value = -1;
-                taskProgressInput.value = 0; // Reset slider for new task
+                document.getElementById('task-id').value = ''; 
+                taskProgressInput.value = 0;
             }
-            // Update the displayed progress value
             progressValueSpan.textContent = taskProgressInput.value;
             openModal(taskModal);
         }
 
-        // --- PDF Generation ---
+        // --- Firebase CRUD Functions ---
+        async function saveTask(taskData, taskId = null) {
+            try {
+                if (taskId) { // Editar tarea existente
+                    const taskRef = doc(db, "tasks", taskId);
+                    await updateDoc(taskRef, taskData);
+                    showToast('Tarea actualizada en la nube.');
+                } else { // Agregar nueva tarea
+                    await addDoc(collection(db, "tasks"), taskData);
+                    showToast('Tarea agregada a la nube.');
+                }
+            } catch (e) {
+                console.error("Error al guardar la tarea:", e);
+                showToast('Error al guardar la tarea en la nube.', 'error');
+            }
+        }
+
+        async function deleteTask(taskId) {
+            try {
+                await deleteDoc(doc(db, "tasks", taskId));
+                showToast('Tarea eliminada de la nube.');
+            } catch (e) {
+                console.error("Error al eliminar la tarea:", e);
+                showToast('Error al eliminar la tarea de la nube.', 'error');
+            }
+        }
+
+
         // Helper function to get tasks sorted by category for PDF
         function getSortedTasksForPDF() {
-            // Sort by category first, then by task status (overdue first, then not-started, then in-progress, then completed)
             return [...tasks].sort((a, b) => {
                 const categoryCompare = CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category);
                 if (categoryCompare !== 0) return categoryCompare;
@@ -468,10 +482,9 @@
 
         function createPdfHtml(data) {
             let lastCategory = null;
-            const today = new Date(data.reportDate + 'T00:00:00'); // Use report date for PDF
+            const today = new Date(data.reportDate + 'T00:00:00');
             today.setHours(0,0,0,0);
 
-            // Calculate overall stats for the PDF summary
             const total = data.tasks.length;
             let completedCount = 0;
             let inProgressCount = 0;
@@ -479,7 +492,7 @@
             let notStartedCount = 0;
 
             data.tasks.forEach(task => {
-                const { status } = getTaskStatus(task); // Use getTaskStatus with the current report date
+                const { status } = getTaskStatus(task);
                 if (status === 'completed') completedCount++;
                 else if (status === 'in-progress') inProgressCount++;
                 else if (status === 'overdue') overdueCount++;
@@ -584,8 +597,8 @@
 
             const pdfContainer = document.createElement('div');
             pdfContainer.style.position = 'absolute';
-            pdfContainer.style.left = '-9999px'; // Move off-screen
-            pdfContainer.style.width = '794px'; // A4 width at 96 DPI (approx 210mm * 96dpi/25.4mm/px)
+            pdfContainer.style.left = '-9999px';
+            pdfContainer.style.width = '794px';
             pdfContainer.innerHTML = createPdfHtml(data);
             document.body.appendChild(pdfContainer);
 
@@ -607,10 +620,9 @@
 
                 pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
                 heightLeft -= pdfHeight;
-                // Adjust position for subsequent pages. This accounts for the content within margins.
                 position -= (pdfHeight - (margin * 2)); 
 
-                while (heightLeft > -margin) { // Keep adding pages until content fully rendered
+                while (heightLeft > -margin) { 
                     pdf.addPage();
                     pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
                     heightLeft -= pdfHeight;
@@ -641,7 +653,7 @@
         }
 
         // --- Event Listeners ---
-        reportDateInput.addEventListener('change', renderTasks); // Re-render tasks when report date changes to update overdue status
+        reportDateInput.addEventListener('change', renderTasks);
         btnAddTask.addEventListener('click', () => openTaskModal());
         
         document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
@@ -649,27 +661,21 @@
             closeModal(pdfPreviewModal);
         });
         
-        taskForm.addEventListener('submit', (e) => {
+        taskForm.addEventListener('submit', async (e) => { 
             e.preventDefault();
             const taskData = {
                 name: document.getElementById('task-name').value.trim(),
                 description: document.getElementById('task-desc').value.trim(),
                 category: categorySelect.value,
                 deadline: document.getElementById('task-deadline').value,
-                progress: parseInt(taskProgressInput.value, 10), // Get value from range input
+                progress: parseInt(taskProgressInput.value, 10),
             };
-            const taskId = parseInt(document.getElementById('task-id').value, 10);
+            const taskId = document.getElementById('task-id').value; 
             
-            if (taskId > -1) {
-                tasks[taskId] = taskData; // Update existing task
-            } else {
-                tasks.push(taskData); // Add new task
-            }
-            renderTasks();
+            await saveTask(taskData, taskId); 
             closeModal(taskModal);
         });
 
-        // Update progress value span as slider moves
         taskProgressInput.addEventListener('input', () => {
             progressValueSpan.textContent = taskProgressInput.value;
         });
@@ -695,20 +701,24 @@
         tasksContainer.addEventListener('click', (e) => {
             const editButton = e.target.closest('[data-edit-id]');
             if (editButton) {
-                openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
+                const taskIdToEdit = editButton.dataset.editId;
+                const taskToEdit = tasks.find(task => task.id === taskIdToEdit);
+                if (taskToEdit) {
+                    openTaskModal(taskToEdit); 
+                }
             }
             
             const deleteButton = e.target.closest('[data-delete-id]');
             if (deleteButton) {
-                const indexToDelete = parseInt(deleteButton.dataset.deleteId, 10);
-                if (confirm(`¿Eliminar la tarea "${tasks[indexToDelete].name}"?`)) {
-                    tasks.splice(indexToDelete, 1);
-                    renderTasks();
-                    showToast('Tarea eliminada.');
+                const taskIdToDelete = deleteButton.dataset.delete-id; // Corregido: dataset.delete-id a dataset.deleteId
+                const taskName = tasks.find(task => task.id === taskIdToDelete)?.name || 'esta tarea';
+                if (confirm(`¿Eliminar la tarea "${taskName}"?`)) {
+                    deleteTask(taskIdToDelete); 
                 }
             }
         });
         
+        // El botón "Guardar Copia Local" sigue siendo útil como respaldo
         btnSave.addEventListener('click', (e) => {
             e.preventDefault();
             const dataToSave = { reportDate: reportDateInput.value, tasks: tasks };
@@ -720,37 +730,12 @@
             a.download = `borrador_tareas_${new Date().toISOString().split('T')[0]}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            showToast('Borrador guardado como archivo.');
+            showToast('Copia local del borrador guardada.');
         });
         
-        btnLoadFile.addEventListener('click', (e) => {
-            e.preventDefault();
-            fileInput.click();
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    // Ensure that loaded tasks have all properties, provide defaults if missing
-                    tasks = (data.tasks || []).map(task => ({
-                        name: task.name || '',
-                        description: task.description || '',
-                        category: task.category || CATEGORIES[0],
-                        deadline: task.deadline || '',
-                        progress: task.progress !== undefined ? task.progress : 0
-                    }));
-                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
-                    renderTasks();
-                    showToast('Archivo cargado con éxito.');
-                } catch (err) { showToast('El archivo no es válido o está corrupto.', 'error'); }
-            };
-            reader.readAsText(file);
-            fileInput.value = ''; // Clear the input so the same file can be loaded again
-        });
+        // ELIMINAMOS LA LÓGICA DE CARGAR ARCHIVO LOCAL, YA NO ES NECESARIA
+        // btnLoadFile.addEventListener('click', (e) => { ... });
+        // fileInput.addEventListener('change', (e) => { ... });
 
         btnPreviewPDF.addEventListener('click', (e) => {
             e.preventDefault();
@@ -780,10 +765,14 @@
         // --- Initialization ---
         document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
         populateCategorySelects();
-        if (!loadStateFromLocalStorage()) {
+        
+        // Inicializa la fecha del informe al día actual, si no tiene una
+        if (!reportDateInput.value) {
             reportDateInput.value = new Date().toISOString().split('T')[0];
-            renderTasks();
         }
+
+        // ¡Cargamos las tareas desde Firebase al iniciar!
+        loadTasksFromFirestore();
     });
     </script>
 </body>
