@@ -394,6 +394,10 @@
                     statusCircleClass = 'overdue'; 
                 }
 
+                if(task.category !== lastCategory) {
+                    html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
+                    lastCategory = task.category;
+                }
                 const taskCard = document.createElement('div');
                 taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
                 taskCard.innerHTML = `
