@@ -205,7 +205,7 @@
     import { db } from './firebase-config.js'; 
 
     // Importa las funciones de Firestore que usarás
-    import { collection, addDoc, getDocs, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
+    import { collection, addDoc, onSnapshot, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.x.x/firebase-firestore.js";
 
     document.addEventListener('DOMContentLoaded', () => {
         const CATEGORIES = ['ADMINISTRATIVA', 'FINANCIERA', 'SEGURIDAD', 'OPERATIVA', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
@@ -220,11 +220,9 @@
         const actionsMenuButton = document.getElementById('actions-menu-button');
         const actionsDropdown = document.getElementById('actions-dropdown');
         const btnSave = document.getElementById('btn-save'); 
-        // const btnLoadFile = document.getElementById('btn-load-file'); // Este botón ya no existe en el HTML
         const btnGenerate = document.getElementById('btn-generate');
         const btnPreviewPDF = document.getElementById('btn-preview-pdf');
         
-        // const fileInput = document.getElementById('file-input'); // Este input ya no existe en el HTML
         const taskModal = document.getElementById('task-modal');
         const taskForm = document.getElementById('task-form');
         const modalTitle = document.getElementById('modal-title');
@@ -654,6 +652,7 @@
 
         // --- Event Listeners ---
         reportDateInput.addEventListener('change', renderTasks);
+        // Event listener para el botón "Agregar Nueva Tarea"
         btnAddTask.addEventListener('click', () => openTaskModal());
         
         document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
@@ -681,18 +680,21 @@
         });
 
 
+        // Event listeners para el menú de acciones
         actionsMenuButton.addEventListener('click', (e) => {
-            e.stopPropagation();
+            e.stopPropagation(); // Evita que el clic se propague al documento
             actionsDropdown.classList.toggle('hidden');
         });
         
         document.addEventListener('click', (e) => {
+            // Cierra el menú si se hace clic fuera de él
             if (!actionsMenuContainer.contains(e.target)) {
                 actionsDropdown.classList.add('hidden');
             }
         });
         
         actionsDropdown.addEventListener('click', (e) => {
+            // Cierra el menú cuando se hace clic en una opción dentro de él
             if (e.target.tagName === 'A') {
                 actionsDropdown.classList.add('hidden');
             }
@@ -710,7 +712,8 @@
             
             const deleteButton = e.target.closest('[data-delete-id]');
             if (deleteButton) {
-                const taskIdToDelete = deleteButton.dataset.delete-id; // Corregido: dataset.delete-id a dataset.deleteId
+                // CORRECTED: changed dataset.delete-id to dataset.deleteId
+                const taskIdToDelete = deleteButton.dataset.deleteId; 
                 const taskName = tasks.find(task => task.id === taskIdToDelete)?.name || 'esta tarea';
                 if (confirm(`¿Eliminar la tarea "${taskName}"?`)) {
                     deleteTask(taskIdToDelete); 
@@ -733,10 +736,6 @@
             showToast('Copia local del borrador guardada.');
         });
         
-        // ELIMINAMOS LA LÓGICA DE CARGAR ARCHIVO LOCAL, YA NO ES NECESARIA
-        // btnLoadFile.addEventListener('click', (e) => { ... });
-        // fileInput.addEventListener('change', (e) => { ... });
-
         btnPreviewPDF.addEventListener('click', (e) => {
             e.preventDefault();
             const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
