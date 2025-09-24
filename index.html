@@ -1,790 +1,336 @@
 <!DOCTYPE html>
 <html lang="es" class="scroll-smooth">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Plataforma de Informes | Comité Cumbres de Quilpué</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Tareas - Cumbres de Quilpué</title>
     
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Google Fonts: Poppins & Lato -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Lato:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        /* Small custom style for toast notifications */
-        .toast {
-            transition: opacity 0.3s ease, transform 0.3s ease;
+        body {
+            font-family: 'Lato', sans-serif;
+            background-color: #f4f7f9;
         }
-        /* Custom styles for progress color and state circles */
-        .progress-red { background-color: #ef4444; } /* Not started / Overdue */
-        .progress-yellow { background-color: #f59e0b; } /* In progress */
-        .progress-green { background-color: #22c55e; } /* Completed */
-
-        .status-circle {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            display: inline-block;
-            vertical-align: middle;
-            margin-right: 4px;
+        h1, h2, h3, h4 {
+            font-family: 'Poppins', sans-serif;
         }
-        .status-circle.not-started { background-color: #ef4444; }
-        .status-circle.in-progress { background-color: #f59e0b; }
-        .status-circle.completed { background-color: #22c55e; }
-        .status-circle.overdue { background-color: #dc2626; } /* Darker red for overdue */
-
-        /* Custom styling for range input */
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            background: #d1d5db; /* bg-gray-300 */
-            border-radius: 5px;
-            outline: none;
+        .task-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+            border-left: 4px solid transparent;
+        }
+        .task-card:hover:not(.task-completed) {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 1rem;
+            top: 1.25rem;
+            bottom: -1.25rem;
+            width: 2px;
+            background-color: #e5e7eb;
+        }
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: 0.5rem;
+            top: 0.6rem;
+        }
+        .task-checkbox:checked + label .task-text {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        .task-completed {
+            background-color: #f9fafb;
             opacity: 0.7;
-            transition: opacity .2s;
         }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #2563eb; /* bg-blue-600 */
-            cursor: grab;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4); /* ring-blue-500 */
-            transition: background .15s ease-in-out;
+        .task-completed label {
+            cursor: not-allowed;
         }
-
-        input[type="range"]::-moz-range-thumb {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            background: #2563eb; /* bg-blue-600 */
-            cursor: grab;
-            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4); /* ring-blue-500 */
-            transition: background .15s ease-in-out;
+        .modal-backdrop {
+            transition: opacity 0.3s ease-in-out;
         }
-
-        input[type="range"]:active::-webkit-slider-thumb {
-            cursor: grabbing;
-        }
-         input[type="range"]:active::-moz-range-thumb {
-            cursor: grabbing;
+        .modal-content {
+            transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
         }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800 font-sans flex flex-col min-h-screen">
+<body class="antialiased text-gray-800">
 
-    <header class="bg-white shadow-md sticky top-0 z-40">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" alt="Logo Cumbres de Quilpué" class="h-12 w-auto">
-                <div>
-                    <h1 class="text-xl md:text-2xl font-bold text-slate-900">Plataforma de Informes</h1>
-                    <p class="text-sm text-slate-500 hidden md:block">Comité Cumbres de Quilpué</p>
-                </div>
-            </div>
-            
-            <div class="relative" id="actions-menu-container">
-                <button id="actions-menu-button" class="flex items-center gap-2 bg-slate-800 text-white font-semibold px-4 py-2 rounded-lg shadow-sm hover:bg-slate-700 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" /></svg>
-                    <span>Acciones</span>
-                </button>
-                <div id="actions-dropdown" class="hidden absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl z-50 border border-slate-200">
-                    <a href="#" id="btn-save" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100 rounded-t-lg">💾 Guardar Borrador</a>
-                    <a href="#" id="btn-load-file" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">📂 Cargar Archivo</a>
-                    <a href="#" id="btn-preview-pdf" class="block px-4 py-3 text-sm text-slate-700 hover:bg-slate-100">📄 Vista Previa PDF</a>
-                    <a href="#" id="btn-generate" class="block px-4 py-3 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-b-lg">🚀 Generar PDF</a>
-                </div>
-            </div>
-        </div>
-    </header>
-
-    <main class="flex-grow container mx-auto p-4 md:p-6">
-        <div class="bg-white shadow-md rounded-lg p-4 md:p-6 mb-6">
-            <label for="report-date" class="block text-sm font-bold text-slate-700 mb-2">Fecha de Emisión del Informe:</label>
-            <input type="date" id="report-date" class="w-full md:w-auto p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-        </div>
-
-        <div class="bg-white shadow-md rounded-lg p-4 md:p-6 mb-6">
-            <h2 class="text-xl font-bold text-slate-800 mb-4 text-center">Estado General de Tareas</h2>
-            <div class="flex flex-wrap justify-center md:grid md:grid-cols-4 gap-2 md:gap-4 text-center mb-6">
-                <div class="border-2 border-slate-300 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
-                    <div class="text-xl md:text-3xl font-bold" id="total-tasks-count">0</div>
-                    <p class="text-slate-500 text-sm md:text-base">Total de Tareas</p>
-                </div>
-                <div class="border-2 border-green-600 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
-                    <div class="text-xl md:text-3xl font-bold text-green-600" id="completed-tasks-count">0</div>
-                    <p class="text-slate-500 text-sm md:text-base">Completadas</p>
-                </div>
-                <div class="border-2 border-yellow-600 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
-                    <div class="text-xl md:text-3xl font-bold text-yellow-600" id="in-progress-tasks-count">0</div>
-                    <p class="text-slate-500 text-sm md:text-base">En Progreso</p>
-                </div>
-                <div class="border-2 border-red-600 rounded-full p-2 m-1 flex flex-col justify-center items-center flex-grow">
-                    <div class="text-xl md:text-3xl font-bold text-red-600" id="overdue-tasks-count">0</div>
-                    <p class="text-slate-500 text-sm md:text-base">Vencidas / Sin Iniciar</p>
-                </div>
-            </div>
-
-            <div class="flex flex-col md:flex-row gap-4 mb-4">
-                <div class="flex-grow">
-                    <label for="filter-category" class="block text-sm font-bold text-slate-700 mb-1">Filtrar por Categoría:</label>
-                    <select id="filter-category" class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="all">Todas las Categorías</option>
-                    </select>
-                </div>
-                <div class="flex-grow">
-                    <label for="filter-status" class="block text-sm font-bold text-slate-700 mb-1">Filtrar por Estado:</label>
-                    <select id="filter-status" class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="all">Todos los Estados</option>
-                        <option value="not-started">No Iniciadas</option>
-                        <option value="in-progress">En Progreso</option>
-                        <option value="completed">Completadas</option>
-                        <option value="overdue">Vencidas</option>
-                    </select>
-                </div>
-                <div class="flex-grow md:w-1/2">
-                    <label for="search-tasks" class="block text-sm font-bold text-slate-700 mb-1">Buscar Tarea:</label>
-                    <input type="text" id="search-tasks" placeholder="Buscar por nombre o descripción..." class="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-            </div>
-        </div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         
-        <div id="tasks-container" class="space-y-4">
+        <!-- Cabecera -->
+        <header class="text-center mb-16">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 tracking-tight">Panel de Mando Interactivo</h1>
+            <p class="mt-3 text-xl text-gray-500">Cumbres de Quilpué</p>
+            <p id="last-updated" class="mt-2 text-sm text-gray-400">Última actualización: 24 de Septiembre, 2025</p>
+        </header>
+
+        <!-- Mapa de Prioridades de Torres -->
+        <section class="mb-16">
+            <h2 class="text-2xl font-bold text-center mb-6">Prioridades de Mantenimiento por Torre</h2>
+            <div class="grid grid-cols-3 md:grid-cols-9 gap-2 max-w-4xl mx-auto">
+                <div class="h-20 bg-red-500 text-white rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T7</h4><span class="text-xs">Alta</span></div>
+                <div class="h-20 bg-red-500 text-white rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T8</h4><span class="text-xs">Alta</span></div>
+                <div class="h-20 bg-red-500 text-white rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T9</h4><span class="text-xs">Alta</span></div>
+                <div class="h-20 bg-yellow-400 text-gray-800 rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T1</h4><span class="text-xs">Media</span></div>
+                <div class="h-20 bg-yellow-400 text-gray-800 rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T2</h4><span class="text-xs">Media</span></div>
+                <div class="h-20 bg-yellow-400 text-gray-800 rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T3</h4><span class="text-xs">Media</span></div>
+                <div class="h-20 bg-yellow-400 text-gray-800 rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T4</h4><span class="text-xs">Post-Incendio</span></div>
+                <div class="h-20 bg-green-500 text-white rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T5</h4><span class="text-xs">Garantía</span></div>
+                <div class="h-20 bg-green-500 text-white rounded-lg shadow flex flex-col justify-center items-center text-center p-1"><h4 class="font-bold text-lg">T6</h4><span class="text-xs">Garantía</span></div>
+            </div>
+        </section>
+
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Columna Principal -->
+            <div class="lg:col-span-2 space-y-12">
+
+                <!-- TAREAS PRIORITARIAS -->
+                <section>
+                    <h2 class="text-2xl font-bold flex items-center gap-3 mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <span> Tareas Prioritarias</span>
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task1" value="Pago emergencia química" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task1" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Pago emergencia química</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task2" value="Comunicado emergencia química" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task2" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Comunicado emergencia química</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task3" value="Sistema de 4x4 conserjería" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task3" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Sistema de 4x4 conserjería</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task4" value="Trámite certificación de gas (Sellos)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task4" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Trámite certificación de gas (Sellos)</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task5" value="Copia a comité de trámites JPL (Gas)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task5" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Copia a comité de trámites JPL (Gas)</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task6" value="Solución definitiva portón vehicular" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task6" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Solución definitiva portón vehicular</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task7" value="Término de trabajos eléctricos y entrega de documentos" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task7" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Término de trabajos eléctricos y entrega de docs</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task8" value="Inventario de equipos y materiales" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task8" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Inventario de equipos y materiales</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task9" value="Protectores metálicos para cámaras del portón" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task9" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Protectores metálicos para cámaras del portón</span></label></div>
+                        <div class="task-card border-l-red-500 p-4 flex items-center"><input type="checkbox" id="task10" value="Reparación de silla de conserjería" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task10" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Reparación de silla de conserjería</span></label></div>
+                    </div>
+                </section>
+
+                <!-- TRABAJOS NORMALES -->
+                <section>
+                    <h2 class="text-2xl font-bold flex items-center gap-3 mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <span> Trabajos Normales</span>
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="task-card border-l-orange-500 p-4 flex items-center"><input type="checkbox" id="task11" value="Compra e instalación de puerta (conserjería)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task11" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Compra e instalación de puerta (conserjería)</span></label></div>
+                        <div class="task-card border-l-orange-500 p-4 flex items-center"><input type="checkbox" id="task12" value="Compra de individuales, tazas y vasos" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task12" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Compra de individuales, tazas y vasos</span></label></div>
+                        <div class="task-card border-l-orange-500 p-4 flex items-center"><input type="checkbox" id="task13" value="Compra de vidrio o cubre mesa de reuniones" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task13" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Compra de vidrio o cubre mesa de reuniones</span></label></div>
+                        <div class="task-card border-l-orange-500 p-4 flex items-center"><input type="checkbox" id="task14" value="Cotizaciones para sistema de regadío" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task14" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Cotizaciones para sistema de regadío</span></label></div>
+                        <div class="task-card border-l-orange-500 p-4 flex items-center"><input type="checkbox" id="task15" value="Compra de pintura para conserjería" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task15" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Compra de pintura para conserjería</span></label></div>
+                        <div class="task-card border-l-orange-500 p-4 flex items-center"><input type="checkbox" id="task16" value="Compra de topes para puertas y muebles" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task16" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Compra de topes para puertas y muebles</span></label></div>
+                    </div>
+                </section>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    <section>
+                        <h2 class="text-2xl font-bold flex items-center gap-3 mb-6"><svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-sky-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9V3m-3.97-1.03a9 9 0 0111.94 0m0 0a9 9 0 00-11.94 0m5.97 5.97a3 3 0 11-6 0 3 3 0 016 0z" /></svg><span>🌐 ComunidadFeliz</span></h2>
+                        <div class="space-y-4">
+                            <div class="task-card border-l-sky-500 p-4 flex items-center"><input type="checkbox" id="task17" value="Revisar y configurar módulo de paquetería" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task17" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Revisar y configurar módulo de paquetería</span></label></div>
+                            <div class="task-card border-l-sky-500 p-4 flex items-center"><input type="checkbox" id="task18" value="Cerrar incidentes antiguos (50 pendientes)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task18" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Cerrar incidentes antiguos (50 pendientes)</span></label></div>
+                        </div>
+                    </section>
+                    <section>
+                         <h2 class="text-2xl font-bold flex items-center gap-3 mb-6"><svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg><span>🛠 Mantención</span></h2>
+                        <div class="space-y-4">
+                            <div class="task-card border-l-cyan-500 p-4 flex items-center"><input type="checkbox" id="task19" value="Instalar cinta reflectante en portón" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task19" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Instalar cinta reflectante en portón</span></label></div>
+                            <div class="task-card border-l-cyan-500 p-4 flex items-center"><input type="checkbox" id="task20" value="Instalar hitos viales en acceso" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task20" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Instalar hitos viales en acceso</span></label></div>
+                            <div class="task-card border-l-cyan-500 p-4 flex items-center"><input type="checkbox" id="task21" value="Pintar bicicleteros (Celeste)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task21" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Pintar bicicleteros (Celeste)</span></label></div>
+                            <div class="task-card border-l-cyan-500 p-4 flex items-center"><input type="checkbox" id="task22" value="Reparar paredes de bodegas (T 7-8-9)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task22" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Reparar paredes de bodegas (T 7-8-9)</span></label></div>
+                            <div class="task-card border-l-cyan-500 p-4 flex items-center"><input type="checkbox" id="task23" value="Desmalezado alrededor de generador" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="task23" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Desmalezado alrededor de generador</span></label></div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Columna Derecha -->
+            <aside class="space-y-12">
+                <section>
+                    <h2 class="text-2xl font-bold flex items-center gap-3 mb-6"><svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" /></svg><span>❌️ Equipos No Operativos</span></h2>
+                    <div class="bg-white p-4 rounded-lg shadow-sm space-y-3">
+                        <div class="flex items-center"><input type="checkbox" id="equip1" value="Reparación de Huellero" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip1" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Huellero</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip2" value="Reparación de Citófono de conserjería" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip2" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Citófono de conserjería</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip3" value="Reparación de Tablet" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip3" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Tablet</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip4" value="Reparación de Cámaras generales (05)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip4" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Cámaras generales (05)</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip5" value="Reparación de Cámaras portón (02)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip5" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Cámaras portón (02)</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip6" value="Reparación de Baliza de acceso" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip6" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Baliza de acceso</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip7" value="Reparación de Luces de acceso de conserjería (02)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip7" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Luces de acceso de conserjería (02)</span></label></div>
+                        <div class="flex items-center"><input type="checkbox" id="equip8" value="Reparación de Cargadores (tablet y celular)" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="equip8" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Cargadores (tablet y celular)</span></label></div>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-2xl font-bold flex items-center gap-3 mb-6"><svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg><span>🔸️ En Revisión Comité</span></h2>
+                    <div class="space-y-4">
+                        <div class="task-card border-l-blue-500 p-4 flex items-center"><input type="checkbox" id="review1" value="Adquisición de nuevas gomas para torres" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="review1" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Adquisición de nuevas gomas para torres</span></label></div>
+                        <div class="task-card border-l-blue-500 p-4 flex items-center"><input type="checkbox" id="review2" value="Adquisición de interruptores para accesos" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="review2" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Adquisición de interruptores para accesos</span></label></div>
+                        <div class="task-card border-l-blue-500 p-4 flex items-center"><input type="checkbox" id="review3" value="Adquisición de alarmas de emergencia" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="review3" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Adquisición de alarmas de emergencia</span></label></div>
+                        <div class="task-card border-l-blue-500 p-4 flex items-center"><input type="checkbox" id="review4" value="Cotización de nueva señalética" class="task-checkbox h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 mr-3"><label for="review4" class="flex-1 cursor-pointer"><span class="task-text text-gray-700">Cotización de nueva señalética</span></label></div>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-2xl font-bold flex items-center gap-3 mb-6"><svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span>📅 Cumplimiento de Fechas</span></h2>
+                    <div class="space-y-6">
+                        <div class="relative timeline-item pl-8"><div class="timeline-dot h-4 w-4 bg-indigo-200 rounded-full ring-4 ring-white"></div><h4 class="font-bold">30 de cada mes</h4><p class="text-gray-600 text-sm">Emitir calendario de visitas Adm.</p></div>
+                        <div class="relative timeline-item pl-8"><div class="timeline-dot h-4 w-4 bg-indigo-200 rounded-full ring-4 ring-white"></div><h4 class="font-bold">05 de cada mes</h4><p class="text-gray-600 text-sm">Emitir GG.CC.</p></div>
+                        <div class="relative timeline-item pl-8"><div class="timeline-dot h-4 w-4 bg-indigo-200 rounded-full ring-4 ring-white"></div><h4 class="font-bold">10 de cada mes</h4><p class="text-gray-600 text-sm">Notificar a morosos.</p></div>
+                        <div class="relative timeline-item pl-8"><div class="timeline-dot h-4 w-4 bg-indigo-200 rounded-full ring-4 ring-white"></div><h4 class="font-bold">15 de cada mes</h4><p class="text-gray-600 text-sm">Corte de suministro a morosos.</p></div>
+                        <div class="relative timeline-item pl-8"><div class="timeline-dot h-4 w-4 bg-indigo-200 rounded-full ring-4 ring-white"></div><h4 class="font-bold">Todos los Viernes</h4><p class="text-gray-600 text-sm">Informar avance de trabajos.</p></div>
+                        <div class="relative timeline-item pl-8"><div class="timeline-dot h-4 w-4 bg-indigo-200 rounded-full ring-4 ring-white"></div><h4 class="font-bold">Lunes y Viernes</h4><p class="text-gray-600 text-sm">Mayordomo revisa dependencias.</p></div>
+                    </div>
+                </section>
+            </aside>
         </div>
-        
-        <button id="btn-add-task" class="mt-6 w-full flex items-center justify-center gap-2 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-transform hover:scale-[1.02]">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" /></svg>
-            Agregar Nueva Tarea
-        </button>
-    </main>
+
+        <!-- Pie de página -->
+        <footer class="text-center mt-20 border-t pt-8">
+            <button id="reset-tasks-btn" class="mb-4 text-xs text-gray-500 hover:text-red-600 underline">Reiniciar Tareas Cumplidas</button>
+            <p class="text-sm text-gray-500">&copy; 2025 Comité de Administración Cumbres de Quilpué. Una comunidad comprometida con la acción.</p>
+        </footer>
+    </div>
+
+    <!-- Botón Flotante para Generar Reporte -->
+    <button id="generate-report-btn" class="fixed bottom-6 right-6 bg-indigo-600 text-white p-4 rounded-full shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-110">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+    </button>
     
-    <footer class="bg-slate-200 text-slate-600 text-center p-4 mt-8">
-        <p id="footer-text"></p>
-    </footer>
-
-    <div id="task-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-lg">
-            <div class="flex justify-between items-center p-4 border-b border-slate-200">
-                <h2 id="modal-title" class="text-xl font-bold text-slate-800">Agregar Tarea</h2>
-                <button class="close-button text-slate-400 hover:text-slate-700">&times;</button>
+    <!-- Modal de Confirmación -->
+    <div id="report-modal" class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-50 hidden modal-backdrop opacity-0">
+        <div class="modal-content bg-white rounded-lg shadow-xl max-w-lg w-full p-6 opacity-0 transform -translate-y-10">
+            <div class="flex justify-between items-center border-b pb-3">
+                <h3 class="text-xl font-bold">Confirmar Reporte de Cumplimiento</h3>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
             </div>
-            <form id="task-form" class="p-6 space-y-4">
-                <input type="hidden" id="task-id">
-                <div><label for="task-name" class="font-semibold text-slate-700">Nombre de la tarea</label><input type="text" id="task-name" class="mt-1 w-full p-2 border rounded-md" required></div>
-                <div><label for="task-desc" class="font-semibold text-slate-700">Descripción</label><textarea id="task-desc" rows="4" class="mt-1 w-full p-2 border rounded-md"></textarea></div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label for="task-category" class="font-semibold text-slate-700">Categoría</label><select id="task-category" class="mt-1 w-full p-2 border rounded-md"></select></div>
-                    <div><label for="task-deadline" class="font-semibold text-slate-700">Plazo</label><input type="date" id="task-deadline" class="mt-1 w-full p-2 border rounded-md"></div>
-                </div>
-                <div>
-                    <label for="task-progress" class="font-semibold text-slate-700">Porcentaje de avance (<span id="progress-value">0</span>%)</label>
-                    <input type="range" id="task-progress" min="0" max="100" value="0" class="mt-2 w-full">
-                </div>
-                <button type="submit" class="w-full bg-slate-800 text-white font-bold py-3 rounded-lg hover:bg-slate-700">Guardar Tarea</button>
-            </form>
+            <div class="mt-4">
+                <p id="modal-message" class="text-gray-700 mb-4"></p>
+                <ul id="selected-tasks-list" class="list-disc list-inside space-y-2 text-gray-600 max-h-60 overflow-y-auto"></ul>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="cancel-btn" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">Cancelar</button>
+                <button id="send-email-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Confirmar y Redactar Correo</button>
+            </div>
         </div>
     </div>
-    
-    <div id="pdf-preview-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center p-4 border-b border-slate-200">
-                <h2 class="text-xl font-bold text-slate-800">Vista Previa del Informe</h2>
-                <button class="close-button text-slate-400 hover:text-slate-700">&times;</button>
-            </div>
-            <div id="pdf-preview-content" class="p-2 overflow-y-auto bg-slate-50 flex-grow"></div>
-        </div>
-    </div>
-
-    <input type="file" id="file-input" class="hidden" accept="application/json">
-    <div id="toast-container" class="fixed bottom-4 right-4 z-50 space-y-2"></div>
 
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const CATEGORIES = ['ADMINISTRATIVA', 'FINANCIERA', 'SEGURIDAD', 'OPERATIVA', 'COMUNICACIÓN', 'SOCIAL', 'OTROS'];
-        
-        // DOM Elements
-        const reportDateInput = document.getElementById('report-date');
-        const tasksContainer = document.getElementById('tasks-container');
-        const btnAddTask = document.getElementById('btn-add-task');
-        
-        // Action menu elements
-        const actionsMenuContainer = document.getElementById('actions-menu-container');
-        const actionsMenuButton = document.getElementById('actions-menu-button');
-        const actionsDropdown = document.getElementById('actions-dropdown');
-        const btnSave = document.getElementById('btn-save');
-        const btnLoadFile = document.getElementById('btn-load-file');
-        const btnGenerate = document.getElementById('btn-generate');
-        const btnPreviewPDF = document.getElementById('btn-preview-pdf');
-        
-        const fileInput = document.getElementById('file-input');
-        const taskModal = document.getElementById('task-modal');
-        const taskForm = document.getElementById('task-form');
-        const modalTitle = document.getElementById('modal-title');
-        const pdfPreviewModal = document.getElementById('pdf-preview-modal');
-        const pdfPreviewContent = document.getElementById('pdf-preview-content');
-        const categorySelect = document.getElementById('task-category');
+        document.addEventListener('DOMContentLoaded', () => {
+            const STORAGE_KEY = 'completedTasksCDQ';
 
-        // Task Form Progress elements
-        const taskProgressInput = document.getElementById('task-progress');
-        const progressValueSpan = document.getElementById('progress-value');
+            const generateReportBtn = document.getElementById('generate-report-btn');
+            const reportModal = document.getElementById('report-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const sendEmailBtn = document.getElementById('send-email-btn');
+            const modalMessage = document.getElementById('modal-message');
+            const selectedTasksList = document.getElementById('selected-tasks-list');
+            const modalContent = reportModal.querySelector('.modal-content');
+            const resetTasksBtn = document.getElementById('reset-tasks-btn');
 
-        // Stats elements
-        const totalTasksCount = document.getElementById('total-tasks-count');
-        const completedTasksCount = document.getElementById('completed-tasks-count');
-        const inProgressTasksCount = document.getElementById('in-progress-tasks-count');
-        const overdueTasksCount = document.getElementById('overdue-tasks-count');
+            const getCompletedTasks = () => JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            const saveCompletedTasks = (tasks) => localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
 
-        // Filter elements
-        const filterCategorySelect = document.getElementById('filter-category');
-        const filterStatusSelect = document.getElementById('filter-status');
-        const searchTasksInput = document.getElementById('search-tasks');
-
-        let tasks = []; // Global task array
-
-        // --- Local Storage ---
-        function saveStateToLocalStorage() {
-            const state = {
-                reportDate: reportDateInput.value,
-                tasks: tasks
+            const applyCompletedState = () => {
+                const completedTasks = getCompletedTasks();
+                document.querySelectorAll('.task-checkbox').forEach(checkbox => {
+                    if (completedTasks.includes(checkbox.id)) {
+                        checkbox.checked = true;
+                        checkbox.disabled = true;
+                        checkbox.closest('.task-card').classList.add('task-completed');
+                    } else {
+                        checkbox.checked = false;
+                        checkbox.disabled = false;
+                         checkbox.closest('.task-card').classList.remove('task-completed');
+                    }
+                });
             };
-            localStorage.setItem('taskReportState', JSON.stringify(state));
-        }
 
-        function loadStateFromLocalStorage() {
-            const savedState = localStorage.getItem('taskReportState');
-            if (savedState) {
-                const state = JSON.parse(savedState);
-                // Ensure default values for new properties if loading old data
-                tasks = (state.tasks || []).map(task => ({
-                    name: task.name || '',
-                    description: task.description || '',
-                    category: task.category || CATEGORIES[0],
-                    deadline: task.deadline || '',
-                    progress: task.progress !== undefined ? task.progress : 0
-                }));
-                reportDateInput.value = state.reportDate || new Date().toISOString().split('T')[0];
-                renderTasks(); // Render all tasks initially after loading
-                return true;
-            }
-            return false;
-        }
+            const openModal = () => {
+                reportModal.classList.remove('hidden');
+                setTimeout(() => {
+                    reportModal.classList.remove('opacity-0');
+                    modalContent.classList.remove('opacity-0', '-translate-y-10');
+                }, 10);
+            };
 
-        // --- UI Functions ---
-        function populateCategorySelects() {
-            categorySelect.innerHTML = CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('');
-            filterCategorySelect.innerHTML = `<option value="all">Todas las Categorías</option>` + CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join('');
-        }
-        
-        function showToast(message, type = 'success') {
-            const toastContainer = document.getElementById('toast-container');
-            const bgColor = type === 'success' ? 'bg-green-600' : 'bg-red-600';
-            const toast = document.createElement('div');
-            toast.className = `toast transform translate-y-4 opacity-0 ${bgColor} text-white font-bold py-3 px-5 rounded-lg shadow-lg`;
-            toast.textContent = message;
-            toastContainer.appendChild(toast);
-            setTimeout(() => {
-                toast.classList.remove('translate-y-4', 'opacity-0');
-            }, 10);
-            setTimeout(() => {
-                toast.classList.add('opacity-0');
-                setTimeout(() => toast.remove(), 500);
-            }, 3000);
-        }
-        
-        function formatInformeDate(dateStr) {
-            if (!dateStr) return '';
-            const date = new Date(dateStr + 'T00:00:00'); // Ensure date is treated as local date
-            // Using 'es-CL' for Chile's locale, which typically uses "dd de MMMM de YYYY"
-            return date.toLocaleDateString('es-CL', { timeZone: 'America/Santiago', year: 'numeric', month: 'long', day: 'numeric' });
-        }
+            const closeModal = () => {
+                modalContent.classList.add('opacity-0', '-translate-y-10');
+                reportModal.classList.add('opacity-0');
+                setTimeout(() => reportModal.classList.add('hidden'), 300);
+            };
 
-        // Determines the status of a task and calculates days overdue
-        function getTaskStatus(task) {
-            const reportDateVal = reportDateInput.value;
-            const today = reportDateVal ? new Date(reportDateVal + 'T00:00:00') : new Date();
-            today.setHours(0,0,0,0); // Normalize to start of day
+            generateReportBtn.addEventListener('click', () => {
+                const checkedTasks = document.querySelectorAll('.task-checkbox:checked:not(:disabled)');
+                selectedTasksList.innerHTML = '';
 
-            const deadlineDate = task.deadline ? new Date(task.deadline + 'T00:00:00') : null;
-
-            if (task.progress === 100) return { status: 'completed', daysOverdue: 0 };
-            
-            let daysOverdue = 0;
-            if (deadlineDate && deadlineDate < today) {
-                const diffTime = Math.abs(today.getTime() - deadlineDate.getTime());
-                daysOverdue = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                return { status: 'overdue', daysOverdue: daysOverdue }; // Overdue if past deadline and not completed
-            }
-            
-            if (task.progress === 0) return { status: 'not-started', daysOverdue: 0 };
-            if (task.progress > 0 && task.progress < 100) return { status: 'in-progress', daysOverdue: 0 };
-            
-            return { status: 'not-started', daysOverdue: 0 }; // Default case, should ideally not be hit
-        }
-
-        function getStatusColorClass(status) {
-            if (status === 'completed') return 'progress-green';
-            if (status === 'in-progress') return 'progress-yellow';
-            if (status === 'not-started' || status === 'overdue') return 'progress-red';
-            return '';
-        }
-
-        function updateTaskStatistics() {
-            const total = tasks.length;
-            let completed = 0;
-            let inProgress = 0;
-            let overdue = 0;
-            let notStarted = 0;
-
-            tasks.forEach(task => {
-                const { status } = getTaskStatus(task);
-                if (status === 'completed') completed++;
-                else if (status === 'in-progress') inProgress++;
-                else if (status === 'overdue') overdue++;
-                else if (status === 'not-started') notStarted++;
-            });
-
-            totalTasksCount.textContent = total;
-            completedTasksCount.textContent = completed;
-            inProgressTasksCount.textContent = inProgress;
-            overdueTasksCount.textContent = overdue + notStarted; // Combine not-started and overdue for display
-        }
-        
-        function renderTasks() {
-            tasksContainer.innerHTML = '';
-            
-            const selectedCategory = filterCategorySelect.value;
-            const selectedStatus = filterStatusSelect.value;
-            const searchTerm = searchTasksInput.value.toLowerCase();
-
-            const filteredTasks = tasks.filter(task => {
-                const matchesCategory = selectedCategory === 'all' || task.category === selectedCategory;
-                const { status: taskStatus } = getTaskStatus(task);
-                const matchesStatus = selectedStatus === 'all' || taskStatus === selectedStatus;
-                const matchesSearch = searchTerm === '' || 
-                                      task.name.toLowerCase().includes(searchTerm) || 
-                                      task.description.toLowerCase().includes(searchTerm);
-                
-                return matchesCategory && matchesStatus && matchesSearch;
-            });
-
-            if (filteredTasks.length === 0) {
-                tasksContainer.innerHTML = `<div class="bg-white rounded-lg p-8 text-center text-slate-500">No hay tareas que coincidan con los filtros aplicados.</div>`;
-                updateTaskStatistics(); // Still update counts based on ALL tasks
-                return;
-            }
-
-            filteredTasks.forEach((task) => {
-                // Find the original index in the 'tasks' array, not the filtered index
-                const originalIndex = tasks.indexOf(task); 
-                const { status: taskStatus, daysOverdue } = getTaskStatus(task);
-                const cardBorder = taskStatus === 'overdue' ? 'border-red-500' : 'border-blue-600';
-                const progressColorClass = getStatusColorClass(taskStatus);
-                
-                let statusText = '';
-                let statusCircleClass = '';
-                if (taskStatus === 'completed') { statusText = 'Completada'; statusCircleClass = 'completed'; }
-                else if (taskStatus === 'in-progress') { statusText = 'En Progreso'; statusCircleClass = 'in-progress'; }
-                else if (taskStatus === 'not-started') { statusText = 'No Iniciada'; statusCircleClass = 'not-started'; }
-                else if (taskStatus === 'overdue') { 
-                    statusText = `Vencida (${daysOverdue} días)`; 
-                    statusCircleClass = 'overdue'; 
-                }
-
-                const taskCard = document.createElement('div');
-                taskCard.className = `bg-white shadow-md rounded-lg border-l-4 ${cardBorder} p-4`;
-                taskCard.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <h3 class="text-lg font-bold text-slate-800">${task.name}</h3>
-                        <div class="flex-shrink-0 flex gap-2">
-                            <button class="text-slate-500 hover:text-blue-600" data-edit-id="${originalIndex}">Editar</button>
-                            <button class="text-slate-500 hover:text-red-600" data-delete-id="${originalIndex}">Eliminar</button>
-                        </div>
-                    </div>
-                    <p class="text-slate-600 mb-4">${task.description || '<i>Sin descripción.</i>'}</p>
-                    <div class="w-full bg-slate-200 rounded-full h-2.5 mb-2">
-                        <div class="h-2.5 rounded-full ${progressColorClass}" style="width: ${taskStatus === 'completed' ? '100%' : (taskStatus === 'not-started' ? '0%' : '50%')}"></div>
-                    </div>
-                    <div class="flex justify-between items-center text-sm text-slate-500">
-                        <span><strong>Categoría:</strong> ${task.category}</span>
-                        <span><strong>Plazo:</strong> ${task.deadline ? formatInformeDate(task.deadline) : 'N/A'}</span>
-                        <span class="font-bold">
-                            <span class="status-circle ${statusCircleClass}"></span>
-                            ${statusText}
-                        </span>
-                    </div>
-                `;
-                tasksContainer.appendChild(taskCard);
-            });
-            updateTaskStatistics();
-            saveStateToLocalStorage();
-        }
-        
-        function openModal(modal) { modal.classList.remove('hidden'); }
-        function closeModal(modal) { modal.classList.add('hidden'); }
-
-        function openTaskModal(task = null, index = -1) {
-            taskForm.reset();
-            populateCategorySelects();
-            // Set default date for new tasks to today
-            document.getElementById('task-deadline').value = new Date().toISOString().split('T')[0];
-
-            if (task) {
-                modalTitle.textContent = 'Editar Tarea';
-                document.getElementById('task-id').value = index;
-                document.getElementById('task-name').value = task.name;
-                document.getElementById('task-desc').value = task.description;
-                categorySelect.value = task.category;
-                document.getElementById('task-deadline').value = task.deadline;
-                taskProgressInput.value = task.progress; // Set slider value
-            } else {
-                modalTitle.textContent = 'Agregar Tarea';
-                document.getElementById('task-id').value = -1;
-                taskProgressInput.value = 0; // Reset slider for new task
-            }
-            // Update the displayed progress value
-            progressValueSpan.textContent = taskProgressInput.value;
-            openModal(taskModal);
-        }
-
-        // --- PDF Generation ---
-        // Helper function to get tasks sorted by category for PDF
-        function getSortedTasksForPDF() {
-            // Sort by category first, then by task status (overdue first, then not-started, then in-progress, then completed)
-            return [...tasks].sort((a, b) => {
-                const categoryCompare = CATEGORIES.indexOf(a.category) - CATEGORIES.indexOf(b.category);
-                if (categoryCompare !== 0) return categoryCompare;
-
-                const statusA = getTaskStatus(a).status;
-                const statusB = getTaskStatus(b).status;
-
-                const statusOrder = { 'overdue': 0, 'not-started': 1, 'in-progress': 2, 'completed': 3 };
-                return statusOrder[statusA] - statusOrder[statusB];
-            });
-        }
-
-        function createPdfHtml(data) {
-            let lastCategory = null;
-            const today = new Date(data.reportDate + 'T00:00:00'); // Use report date for PDF
-            today.setHours(0,0,0,0);
-
-            // Calculate overall stats for the PDF summary
-            const total = data.tasks.length;
-            let completedCount = 0;
-            let inProgressCount = 0;
-            let overdueCount = 0;
-            let notStartedCount = 0;
-
-            data.tasks.forEach(task => {
-                const { status } = getTaskStatus(task); // Use getTaskStatus with the current report date
-                if (status === 'completed') completedCount++;
-                else if (status === 'in-progress') inProgressCount++;
-                else if (status === 'overdue') overdueCount++;
-                else if (status === 'not-started') notStartedCount++;
-            });
-
-            const overallCompletionPercentage = total > 0 ? Math.round((completedCount / total) * 100) : 0;
-            
-            let professionalSummary = '';
-
-            if (total === 0) {
-                professionalSummary = "Actualmente no hay tareas registradas en el sistema. Se recomienda agregar tareas para iniciar el seguimiento.";
-            } else if (completedCount === total) {
-                professionalSummary = "Todas las tareas han sido completadas exitosamente, demostrando un excelente nivel de ejecución y gestión eficiente.";
-            } else if (overdueCount > 0) {
-                if (overallCompletionPercentage > 70) {
-                     professionalSummary = `El progreso general de las tareas es muy bueno (${overallCompletionPercentage}% completado). Sin embargo, se identifican **${overdueCount} tareas vencidas** que requieren atención prioritaria para su resolución inmediata.`;
-                } else if (overdueCount / total > 0.5) {
-                    professionalSummary = `Se observa un número significativo de **tareas vencidas (${overdueCount})**, lo que indica la necesidad urgente de revisar los plazos, reasignar recursos o ajustar el enfoque para evitar mayores retrasos y asegurar la continuidad.`;
+                if (checkedTasks.length === 0) {
+                    modalMessage.textContent = 'No ha seleccionado nuevas tareas para reportar. Por favor, marque al menos una casilla.';
+                    sendEmailBtn.classList.add('hidden');
                 } else {
-                    professionalSummary = `El seguimiento de tareas muestra un avance constante, pero **${overdueCount} tareas han superado su plazo de entrega**. Se sugiere priorizar la finalización de estas tareas para mantener el cronograma y mitigar riesgos.`;
+                    modalMessage.innerHTML = `<strong>¿Confirmar el cumplimiento de ${checkedTasks.length} tarea(s)?</strong><br>Una vez reportadas, quedarán guardadas como completas.`;
+                    checkedTasks.forEach(task => {
+                        const li = document.createElement('li');
+                        li.textContent = task.value;
+                        selectedTasksList.appendChild(li);
+                    });
+                    sendEmailBtn.classList.remove('hidden');
                 }
-            } else if (inProgressCount > 0) {
-                professionalSummary = `El avance general de las tareas es satisfactorio (${overallCompletionPercentage}% completado), con **${inProgressCount} tareas en curso** y un buen número ya finalizadas. Se recomienda mantener el enfoque para asegurar la finalización en tiempo y forma.`;
-            } else { // all not started, and not overdue
-                professionalSummary = "Todas las tareas están actualmente en estado 'No Iniciadas'. Se recomienda comenzar con la planificación y asignación de recursos para cada una a la brevedad posible.";
-            }
-
-
-            let html = `<div style="font-family: sans-serif; color: #334155; padding: 40px; width: 780px; background: white;">
-                <header style="display: flex; align-items: center; gap: 16px; border-bottom: 2px solid #334155; padding-bottom: 20px; margin-bottom: 20px;">
-                    <img src="https://i.ibb.co/q3GTC2WT/PENUP-20240906-011555.png" style="height: 60px; width: auto;" alt="Logo">
-                    <div>
-                        <h1 style="font-size: 26px; font-weight: bold; color: #1e293b; margin: 0;">Informe de Tareas</h1>
-                        <p style="margin: 0; font-size: 14px; color: #475569;">Comité Cumbres de Quilpué</p>
-                    </div>
-                </header>
-                <main>
-                    <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6;">
-                        <p style="margin: 0;"><strong>Para:</strong> Administración y Staff</p>
-                        <p style="margin: 5px 0;"><strong>Fecha:</strong> ${formatInformeDate(data.reportDate)}</p>
-                        <p style="margin: 10px 0 0 0;">El presente informe detalla el estado actual de las tareas asignadas, proporcionando una visión general del avance en cada área.</p>
-                    </div>
-                    
-                    <h3 style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 10px;">Resumen Ejecutivo:</h3>
-                    <div style="background-color: #e0f2fe; padding: 15px; border-radius: 8px; margin-bottom: 30px; font-size: 13px; line-height: 1.6; border-left: 4px solid #38bdf8;">
-                        <p>${professionalSummary}</p>
-                        <p style="margin-top: 10px;"><strong>Estadísticas Clave:</strong> Total: ${total}, Completadas: ${completedCount}, En Progreso: ${inProgressCount}, Vencidas: ${overdueCount}, No Iniciadas: ${notStartedCount}.</p>
-                    </div>
-
-                    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-                        <thead><tr>
-                            <th style="width: 25%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Tarea</th>
-                            <th style="width: 40%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Descripción</th>
-                            <th style="width: 15%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Plazo</th>
-                            <th style="width: 20%; text-align: left; padding: 10px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Estado</th>
-                        </tr></thead><tbody>`;
-            data.tasks.forEach(task => {
-                const { status: taskStatus, daysOverdue } = getTaskStatus(task);
-                const rowStyle = taskStatus === 'overdue' ? 'background-color: #FFF2F2;' : '';
-                
-                let statusText = '';
-                let statusCircleClass = '';
-                if (taskStatus === 'completed') { statusText = 'Completada'; statusCircleClass = 'completed'; }
-                else if (taskStatus === 'in-progress') { statusText = 'En Progreso'; statusCircleClass = 'in-progress'; }
-                else if (taskStatus === 'not-started') { statusText = 'No Iniciada'; statusCircleClass = 'not-started'; }
-                else if (taskStatus === 'overdue') { 
-                    statusText = `Vencida (${daysOverdue} días)`; 
-                    statusCircleClass = 'overdue'; 
-                }
-
-                if(task.category !== lastCategory) {
-                    html += `<tr><td colspan="4" style="padding: 12px 5px 5px; font-weight: bold; font-size: 14px; color: #0f172a; border-bottom: 1px solid #0f172a;">Categoría: ${task.category}</td></tr>`;
-                    lastCategory = task.category;
-                }
-                html += `<tr style="border-bottom: 1px solid #e2e8f0; ${rowStyle}">
-                        <td style="padding: 10px; vertical-align: top;">${task.name}</td>
-                        <td style="padding: 10px; vertical-align: top;">${task.description || '-'}</td>
-                        <td style="padding: 10px; vertical-align: top;">${task.deadline ? formatInformeDate(task.deadline) : '-'}</td>
-                        <td style="padding: 10px; vertical-align: middle;">
-                            <div style="display: flex; align-items: center; gap: 5px;">
-                                <span style="width: 10px; height: 10px; border-radius: 50%; display: inline-block;" class="status-circle ${statusCircleClass}"></span>
-                                <span>${statusText}</span>
-                            </div>
-                        </td>
-                    </tr>`;
+                openModal();
             });
-            html += `</tbody></table></main></div>`;
-            return html;
-        }
 
-        async function generatePDF() {
-            const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
-            if (!data.reportDate) {
-                showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
-                return;
-            }
-            if (data.tasks.length === 0) {
-                showToast('Debe agregar al menos una tarea para generar el PDF.', 'error');
-                return;
-            }
+            sendEmailBtn.addEventListener('click', () => {
+                const newlyCheckedTasks = document.querySelectorAll('.task-checkbox:checked:not(:disabled)');
+                if (newlyCheckedTasks.length === 0) return;
 
-            const pdfContainer = document.createElement('div');
-            pdfContainer.style.position = 'absolute';
-            pdfContainer.style.left = '-9999px'; // Move off-screen
-            pdfContainer.style.width = '794px'; // A4 width at 96 DPI (approx 210mm * 96dpi/25.4mm/px)
-            pdfContainer.innerHTML = createPdfHtml(data);
-            document.body.appendChild(pdfContainer);
+                const tasksValues = Array.from(newlyCheckedTasks).map(task => `- ${task.value}`);
+                const today = new Date();
+                const dateString = today.toLocaleDateString('es-CL', { day: '2-digit', month: 'long', year: 'numeric' });
 
-            try {
-                const { jsPDF } = window.jspdf;
-                const pdf = new jsPDF({ orientation: 'p', unit: 'pt', format: 'a4' });
+                const recipient = 'comitecumbresdequilpue@gmail.com';
+                const subject = `Reporte de Cumplimiento - ${dateString}`;
+                const body = `Estimado Comité,\n\nJunto con saludar, se informa que con fecha ${dateString} se ha dado cumplimiento a las siguientes tareas:\n\n${tasksValues.join('\n')}\n\nSaludos cordiales.`;
+                const mailtoLink = `mailto:${recipient}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
                 
-                const canvas = await html2canvas(pdfContainer.firstElementChild, { scale: 3, useCORS: true });
-                const imgData = canvas.toDataURL('image/png');
-
-                const imgProps = pdf.getImageProperties(imgData);
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                const imgHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-                let heightLeft = imgHeight;
-                let position = 0;
-                const margin = 40;
-
-                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-                heightLeft -= pdfHeight;
-                // Adjust position for subsequent pages. This accounts for the content within margins.
-                position -= (pdfHeight - (margin * 2)); 
-
-                while (heightLeft > -margin) { // Keep adding pages until content fully rendered
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight);
-                    heightLeft -= pdfHeight;
-                    position -= (pdfHeight - (margin * 2));
-                }
+                // Save state
+                const completedTasks = getCompletedTasks();
+                const newCompletedIds = Array.from(newlyCheckedTasks).map(task => task.id);
+                saveCompletedTasks([...new Set([...completedTasks, ...newCompletedIds])]);
                 
-                const pageCount = pdf.internal.getNumberOfPages();
-                for (let i = 1; i <= pageCount; i++) {
-                    pdf.setPage(i);
-                    pdf.setFontSize(8);
-                    pdf.setTextColor('#64748b');
-                    const footerY = pdfHeight - 20;
-                    pdf.text("Informe de uso exclusivo para la Administración.", margin, footerY);
-                    pdf.text("Comité Cumbres de Quilpué", pdfWidth / 2, footerY, { align: 'center' });
-                    pdf.text(`Página ${i} de ${pageCount}`, pdfWidth - margin, footerY, { align: 'right' });
+                // Update UI and open email client
+                applyCompletedState();
+                window.location.href = mailtoLink;
+                closeModal();
+            });
+
+            resetTasksBtn.addEventListener('click', () => {
+                if (confirm('¿Está seguro de que desea reiniciar el estado de todas las tareas cumplidas? Esta acción borrará el historial guardado.')) {
+                    localStorage.removeItem(STORAGE_KEY);
+                    applyCompletedState();
                 }
+            });
 
-                pdf.save(`Informe_Tareas_${data.reportDate}.pdf`);
-                showToast('PDF generado con éxito.');
-            } catch (e) {
-                console.error('Error generando PDF:', e);
-                showToast('Hubo un error al generar el PDF.', 'error');
-            } finally {
-                if (pdfContainer.parentNode) {
-                    pdfContainer.parentNode.removeChild(pdfContainer);
-                }
-            }
-        }
+            closeModalBtn.addEventListener('click', closeModal);
+            cancelBtn.addEventListener('click', closeModal);
+            reportModal.addEventListener('click', (e) => {
+                if (e.target === reportModal) closeModal();
+            });
 
-        // --- Event Listeners ---
-        reportDateInput.addEventListener('change', renderTasks); // Re-render tasks when report date changes to update overdue status
-        btnAddTask.addEventListener('click', () => openTaskModal());
-        
-        document.querySelectorAll('.close-button').forEach(btn => btn.onclick = () => {
-            closeModal(taskModal);
-            closeModal(pdfPreviewModal);
+            // Initial load
+            applyCompletedState();
         });
-        
-        taskForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const taskData = {
-                name: document.getElementById('task-name').value.trim(),
-                description: document.getElementById('task-desc').value.trim(),
-                category: categorySelect.value,
-                deadline: document.getElementById('task-deadline').value,
-                progress: parseInt(taskProgressInput.value, 10), // Get value from range input
-            };
-            const taskId = parseInt(document.getElementById('task-id').value, 10);
-            
-            if (taskId > -1) {
-                tasks[taskId] = taskData; // Update existing task
-            } else {
-                tasks.push(taskData); // Add new task
-            }
-            renderTasks();
-            closeModal(taskModal);
-        });
-
-        // Update progress value span as slider moves
-        taskProgressInput.addEventListener('input', () => {
-            progressValueSpan.textContent = taskProgressInput.value;
-        });
-
-
-        actionsMenuButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            actionsDropdown.classList.toggle('hidden');
-        });
-        
-        document.addEventListener('click', (e) => {
-            if (!actionsMenuContainer.contains(e.target)) {
-                actionsDropdown.classList.add('hidden');
-            }
-        });
-        
-        actionsDropdown.addEventListener('click', (e) => {
-            if (e.target.tagName === 'A') {
-                actionsDropdown.classList.add('hidden');
-            }
-        });
-
-        tasksContainer.addEventListener('click', (e) => {
-            const editButton = e.target.closest('[data-edit-id]');
-            if (editButton) {
-                openTaskModal(tasks[parseInt(editButton.dataset.editId, 10)], parseInt(editButton.dataset.editId, 10));
-            }
-            
-            const deleteButton = e.target.closest('[data-delete-id]');
-            if (deleteButton) {
-                const indexToDelete = parseInt(deleteButton.dataset.deleteId, 10);
-                if (confirm(`¿Eliminar la tarea "${tasks[indexToDelete].name}"?`)) {
-                    tasks.splice(indexToDelete, 1);
-                    renderTasks();
-                    showToast('Tarea eliminada.');
-                }
-            }
-        });
-        
-        btnSave.addEventListener('click', (e) => {
-            e.preventDefault();
-            const dataToSave = { reportDate: reportDateInput.value, tasks: tasks };
-            const data = JSON.stringify(dataToSave, null, 2);
-            const blob = new Blob([data], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `borrador_tareas_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('Borrador guardado como archivo.');
-        });
-        
-        btnLoadFile.addEventListener('click', (e) => {
-            e.preventDefault();
-            fileInput.click();
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const data = JSON.parse(event.target.result);
-                    // Ensure that loaded tasks have all properties, provide defaults if missing
-                    tasks = (data.tasks || []).map(task => ({
-                        name: task.name || '',
-                        description: task.description || '',
-                        category: task.category || CATEGORIES[0],
-                        deadline: task.deadline || '',
-                        progress: task.progress !== undefined ? task.progress : 0
-                    }));
-                    reportDateInput.value = data.reportDate || new Date().toISOString().split('T')[0];
-                    renderTasks();
-                    showToast('Archivo cargado con éxito.');
-                } catch (err) { showToast('El archivo no es válido o está corrupto.', 'error'); }
-            };
-            reader.readAsText(file);
-            fileInput.value = ''; // Clear the input so the same file can be loaded again
-        });
-
-        btnPreviewPDF.addEventListener('click', (e) => {
-            e.preventDefault();
-            const data = { reportDate: reportDateInput.value, tasks: getSortedTasksForPDF() };
-            if (!data.reportDate) {
-                showToast('Debe seleccionar una fecha de emisión para el informe.', 'error');
-                return;
-            }
-            if (data.tasks.length === 0) {
-                showToast('Debe agregar al menos una tarea para la vista previa.', 'error');
-                return;
-            }
-            pdfPreviewContent.innerHTML = createPdfHtml(data);
-            openModal(pdfPreviewModal);
-        });
-
-        btnGenerate.addEventListener('click', (e) => {
-            e.preventDefault();
-            generatePDF();
-        });
-
-        // Filter and Search Event Listeners
-        filterCategorySelect.addEventListener('change', renderTasks);
-        filterStatusSelect.addEventListener('change', renderTasks);
-        searchTasksInput.addEventListener('input', renderTasks);
-
-        // --- Initialization ---
-        document.getElementById('footer-text').innerHTML = `&copy; ${new Date().getFullYear()} Condominio Cumbres de Quilpué. Todos los derechos reservados.`;
-        populateCategorySelects();
-        if (!loadStateFromLocalStorage()) {
-            reportDateInput.value = new Date().toISOString().split('T')[0];
-            renderTasks();
-        }
-    });
     </script>
 </body>
 </html>
+
